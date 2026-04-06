@@ -37,10 +37,8 @@ A* uses f(n) = g(n) + h(n), where:
 - h(n): heuristic estimate to nearest destination
 
 ### CUS1
-Iterative Deepening DFS (IDDFS), an uninformed strategy combining DFS memory behavior with increasing depth limits.
 
 ### CUS2
-Informed shortest-by-moves strategy (A* style over step depth), prioritizing fewer moves rather than weighted edge cost.
 
 ## Tie-Breaking Rules
 
@@ -67,8 +65,6 @@ Both inline and next-line forms are supported, for example:
   - 2
 
 ## How To Run
-
-From folder 13_Intro_AI:
 
 ### Run one algorithm on one case
 
