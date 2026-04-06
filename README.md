@@ -5,8 +5,8 @@ This project implements six tree-based search methods for the Route Finding prob
 - BFS
 - GBFS
 - AS (A*)
-- CUS1 (Iterative Deepening DFS)
-- CUS2 (Informed shortest-by-moves search)
+- CUS1 (Yet to decided)
+- CUS2 (Yet to decided)
 
 The program reads a problem text file, runs one selected method, and prints output in the assignment-required format.
 
