@@ -5,8 +5,8 @@ This project implements six tree-based search methods for the Route Finding prob
 - BFS
 - GBFS
 - AS (A*)
-- CUS1 (Yet to decided)
-- CUS2 (Yet to decided)
+- CUS1 (Hill Climbing)
+- CUS2 (Uniform Cost Search)
 
 The program reads a problem text file, runs one selected method, and prints output in the assignment-required format.
 
@@ -37,8 +37,18 @@ A* uses f(n) = g(n) + h(n), where:
 - h(n): heuristic estimate to nearest destination
 
 ### CUS1
+CUS1 uses steepest-ascent hill climbing:
+- At each step it picks the neighbor with the lowest heuristic value h(n).
+- It moves only if that heuristic is strictly better than the current node.
+- If there is no improving move (local minimum/plateau), it stops and reports NoGoal.
+
+This intentionally behaves as a local-search strategy, so it may fail on graphs where a temporary heuristic increase is required to reach a destination.
 
 ### CUS2
+CUS2 uses Uniform Cost Search (UCS):
+- Frontier priority is cumulative path cost g(n).
+- Expands the currently cheapest path first.
+- Guarantees minimum-cost path to a destination when edge costs are non-negative.
 
 ## Tie-Breaking Rules
 
@@ -80,10 +90,12 @@ python tests/verify_all_cases.py
 
 This executes 6 methods x 15 cases = 90 runs and checks:
 - no runtime failures
+- each problem file is structurally valid (origin/destination/node references and edge definitions)
 - valid output shape
 - returned goal is a destination
 - path starts at origin
 - every path transition matches a directed edge
+- edge costs are non-negative (required for UCS optimality)
 - NoGoal appears only when destination is unreachable
 
 ## Test Case Coverage (15 Cases)

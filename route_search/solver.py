@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from .algorithms import (
     solve_astar,
-    solve_astar_moves,
     solve_bfs,
     solve_dfs,
     solve_gbfs,
-    solve_ids,
+    solve_hill_climbing,
+    solve_ucs,
 )
 from .models import Problem, SearchNode
 
@@ -22,7 +22,7 @@ def solve(problem: Problem, method: str) -> tuple[SearchNode | None, int]:
     if key == "AS":
         return solve_astar(problem)
     if key == "CUS1":
-        return solve_ids(problem)
+        return solve_hill_climbing(problem)
     if key == "CUS2":
-        return solve_astar_moves(problem)
+        return solve_ucs(problem)
     raise ValueError("Unsupported method. Use one of: DFS, BFS, GBFS, AS, CUS1, CUS2")

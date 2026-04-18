@@ -36,6 +36,44 @@ def edge_lookup(problem_file: Path) -> tuple[dict[int, set[int]], int, set[int]]
     return edges, problem.origin, set(problem.destinations)
 
 
+def validate_problem_definition(problem_file: Path) -> list[str]:
+    problem = parse_problem(problem_file)
+    failures: list[str] = []
+
+    node_ids = set(problem.nodes)
+    if not node_ids:
+        failures.append(f"{problem_file.name}: no nodes defined")
+
+    if problem.origin not in node_ids:
+        failures.append(f"{problem_file.name}: origin {problem.origin} is not defined in Nodes")
+
+    if not problem.destinations:
+        failures.append(f"{problem_file.name}: destination list is empty")
+
+    destination_set = set(problem.destinations)
+    if len(destination_set) != len(problem.destinations):
+        failures.append(f"{problem_file.name}: duplicate destination ids found")
+
+    for dst in destination_set:
+        if dst not in node_ids:
+            failures.append(f"{problem_file.name}: destination {dst} is not defined in Nodes")
+
+    for src, outgoing in problem.edges.items():
+        if src not in node_ids:
+            failures.append(f"{problem_file.name}: edge source {src} is not defined in Nodes")
+        seen_dsts: set[int] = set()
+        for dst, cost in outgoing:
+            if dst not in node_ids:
+                failures.append(f"{problem_file.name}: edge destination {dst} is not defined in Nodes")
+            if dst in seen_dsts:
+                failures.append(f"{problem_file.name}: duplicate directed edge {src}->{dst}")
+            seen_dsts.add(dst)
+            if cost < 0:
+                failures.append(f"{problem_file.name}: negative edge cost {src}->{dst} = {cost}")
+
+    return failures
+
+
 def parse_solver_output(stdout: str) -> tuple[str, int, list[int]]:
     lines = [ln.strip() for ln in stdout.splitlines() if ln.strip()]
     if len(lines) < 2:
@@ -60,6 +98,9 @@ def main() -> int:
     methods = ["DFS", "BFS", "GBFS", "AS", "CUS1", "CUS2"]
 
     failures: list[str] = []
+
+    for case in cases:
+        failures.extend(validate_problem_definition(case))
 
     for method in methods:
         for case in cases:
