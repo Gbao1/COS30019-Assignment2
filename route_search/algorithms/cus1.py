@@ -5,10 +5,11 @@ from ..heuristics import heuristic
 from ..models import NodeFactory, Problem, SearchNode
 
 
-def solve_hill_climbing(problem: Problem) -> tuple[SearchNode | None, int]:
+def solve_hill_climbing(problem: Problem, max_sideways: int = 100) -> tuple[SearchNode | None, int]:
     # CUS1: steepest-ascent hill climbing using Euclidean heuristic.
     factory = NodeFactory()
     current = factory.create(problem.origin, None, g_cost=0.0, depth=0)
+    sideways_moves = 0
 
     while True:
         if current.state in problem.destinations:
@@ -25,19 +26,27 @@ def solve_hill_climbing(problem: Problem) -> tuple[SearchNode | None, int]:
             if best_move is None or candidate < best_move:
                 best_move = candidate
 
-        # No outgoing edge or no strict improvement: local minimum/plateau.
-        if best_move is None or best_move[0] >= current_h:
+        if best_move is None:
             return None, factory.created_count
 
-        _, next_state, chosen_cost = best_move
+        best_h, next_state, chosen_cost = best_move
+
+        # PLATEAU MITIGATION LOGIC
+        if best_h < current_h:
+            # Found a strict improvement, reset the sideways counter.
+            sideways_moves = 0
+        elif best_h == current_h:
+            # On a plateau: allow only a bounded number of sideways moves.
+            if sideways_moves >= max_sideways:
+                return None, factory.created_count
+            sideways_moves += 1
+        else:
+            # Neighbor is worse (local minimum).
+            return None, factory.created_count
+
         current = factory.create(
             state=next_state,
             parent=current,
             g_cost=current.g_cost + chosen_cost,
             depth=current.depth + 1,
         )
-
-
-def solve_ids(problem: Problem) -> tuple[SearchNode | None, int]:
-    # Backward-compatible alias for existing imports.
-    return solve_hill_climbing(problem)

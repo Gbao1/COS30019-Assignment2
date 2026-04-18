@@ -40,8 +40,3 @@ def solve_ucs(problem: Problem) -> tuple[SearchNode | None, int]:
             heapq.heappush(frontier, (tentative_g, child.state, child.created_order, child))
 
     return None, factory.created_count
-
-
-def solve_astar_moves(problem: Problem) -> tuple[SearchNode | None, int]:
-    # Backward-compatible alias for existing imports.
-    return solve_ucs(problem)
