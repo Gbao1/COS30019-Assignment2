@@ -36,3 +36,9 @@ dist/
 # Local extracted assignment artifacts
 _assignment_extract/
 .venv310/
+
+# Local docs/images
+*.md
+!README.md
+!**/README.md
+*.png
