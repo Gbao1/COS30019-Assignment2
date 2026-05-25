@@ -177,7 +177,13 @@ py -3.10 -m venv .venv310
 ### Run A2B from CLI
 
 ```bash
-python run_tbrgs_cli.py --config config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best
+.\.venv310\Scripts\python.exe run_tbrgs_cli.py --config config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best>
+```
+
+Example:
+
+```bash
+.\.venv310\Scripts\python.exe run_tbrgs_cli.py --config config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best
 ```
 
 ### Run A2B GUI
@@ -191,15 +197,4 @@ python run_tbrgs_gui.py
 ```bash
 pytest tests_a2b -q
 ```
-
-### Rubric coverage mapping
-
-1. Data processing (9 marks):
-  - `tbrgs/data_processing.py`
-2. Three ML algorithms incl. LSTM and GRU (7x3 marks):
-  - `tbrgs/modeling.py`
-3. Comprehensive evaluation (15 marks):
-  - `tbrgs/evaluation.py`
-4. Part A + Part B integration (15 marks):
-  - `tbrgs/topk_routing.py` uses `route_search.algorithms.cus2.solve_ucs`
 
