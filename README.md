@@ -131,3 +131,75 @@ If no destination is found:
 
 - Built for Windows CLI testing as required.
 - Code is modular to support easy maintenance and report explanation.
+
+## Assignment 2B (TBRGS) Add-on
+
+This repository now includes an Assignment 2B implementation scaffold under the `tbrgs` package.
+
+### What is included
+
+- Data processing pipeline for SCATS traffic data (long and wide formats).
+- Three ML algorithms for traffic flow prediction:
+  - LSTM
+  - GRU
+  - Random Forest (third model)
+- Comprehensive model evaluation (MAE, RMSE, MAPE, inference time).
+- Travel-time conversion using the assignment flow-speed equation.
+- Integration with Part A via `CUS2` (UCS) for shortest path and top-k route generation.
+- End-to-end CLI and GUI entry points.
+- A2B test suite (`tests_a2b`) with 15+ tests.
+
+### New files
+
+- `config/tbrgs_defaults.json`: default configuration.
+- `tbrgs/`: A2B package modules.
+- `run_tbrgs_cli.py`: command-line execution for training/evaluation/routing.
+- `run_tbrgs_gui.py`: GUI for origin/destination/model/top-k inputs.
+- `tests_a2b/`: A2B unit tests.
+
+### Installation (A2B)
+
+Install required packages in your virtual environment:
+
+```bash
+pip install -r requirements_a2b.txt
+```
+
+For this workspace, use a Python 3.10-3.12 virtual environment so TensorFlow can run true LSTM/GRU training.
+
+Example on Windows:
+
+```bash
+py -3.10 -m venv .venv310
+.\.venv310\Scripts\python.exe -m pip install -r requirements_a2b.txt
+```
+
+### Run A2B from CLI
+
+```bash
+python run_tbrgs_cli.py --config config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best
+```
+
+### Run A2B GUI
+
+```bash
+python run_tbrgs_gui.py
+```
+
+### Run A2B tests
+
+```bash
+pytest tests_a2b -q
+```
+
+### Rubric coverage mapping
+
+1. Data processing (9 marks):
+  - `tbrgs/data_processing.py`
+2. Three ML algorithms incl. LSTM and GRU (7x3 marks):
+  - `tbrgs/modeling.py`
+3. Comprehensive evaluation (15 marks):
+  - `tbrgs/evaluation.py`
+4. Part A + Part B integration (15 marks):
+  - `tbrgs/topk_routing.py` uses `route_search.algorithms.cus2.solve_ucs`
+
