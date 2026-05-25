@@ -12,13 +12,13 @@ The program reads a problem text file, runs one selected method, and prints outp
 
 ## Project Structure
 
-- search.py: CLI entry point used by marker testing.
-- route_search/: Core package.
-- route_search/algorithms/: One file per search algorithm.
-- problems/sample_problem.txt: Graph from assignment example.
-- problems/test_cases/: 15 test problems for coverage.
-- tests/run_all_methods.py: Quick smoke test runner.
-- tests/verify_all_cases.py: Validation runner for all methods x all cases.
+- 2A/search.py: CLI entry point used by marker testing.
+- 2A/route_search/: Core package.
+- 2A/route_search/algorithms/: One file per search algorithm.
+- 2A/problems/sample_problem.txt: Graph from assignment example.
+- 2A/problems/test_cases/: 15 test problems for coverage.
+- 2A/tests/run_all_methods.py: Quick smoke test runner.
+- 2A/tests/verify_all_cases.py: Validation runner for all methods x all cases.
 
 ## Algorithms and Logic
 
@@ -78,15 +78,15 @@ Both inline and next-line forms are supported, for example:
 
 ### Run one algorithm on one case
 
-python search.py problems/test_cases/tc01_simple_chain.txt DFS
+python 2A/search.py 2A/problems/test_cases/tc01_simple_chain.txt DFS
 
 ### Run all six algorithms on the sample case
 
-python tests/run_all_methods.py
+python 2A/tests/run_all_methods.py
 
 ### Run full verification across all test cases
 
-python tests/verify_all_cases.py
+python 2A/tests/verify_all_cases.py
 
 This executes 6 methods x 15 cases = 90 runs and checks:
 - no runtime failures
@@ -134,7 +134,7 @@ If no destination is found:
 
 ## Assignment 2B (TBRGS) Add-on
 
-This repository now includes an Assignment 2B implementation scaffold under the `tbrgs` package.
+This repository now includes an Assignment 2B implementation scaffold under the `2B/tbrgs` package.
 
 ### What is included
 
@@ -151,18 +151,20 @@ This repository now includes an Assignment 2B implementation scaffold under the 
 
 ### New files
 
-- `config/tbrgs_defaults.json`: default configuration.
-- `tbrgs/`: A2B package modules.
-- `run_tbrgs_cli.py`: command-line execution for training/evaluation/routing.
-- `run_tbrgs_gui.py`: GUI for origin/destination/model/top-k inputs.
-- `tests_a2b/`: A2B unit tests.
+- `2B/config/tbrgs_defaults.json`: default configuration.
+- `2B/data/input/`: input data files used by TBRGS.
+- `2B/data/output/`: generated metrics/results outputs.
+- `2B/tbrgs/`: A2B package modules.
+- `2B/run_tbrgs_cli.py`: command-line execution for training/evaluation/routing.
+- `2B/run_tbrgs_gui.py`: GUI for origin/destination/model/top-k inputs.
+- `2B/tests_a2b/`: A2B unit tests.
 
 ### Installation (A2B)
 
 Install required packages in your virtual environment:
 
 ```bash
-pip install -r requirements_a2b.txt
+pip install -r 2B/requirements_a2b.txt
 ```
 
 For this workspace, use a Python 3.10-3.12 virtual environment so TensorFlow can run true LSTM/GRU training.
@@ -171,30 +173,30 @@ Example on Windows:
 
 ```bash
 py -3.10 -m venv .venv310
-.\.venv310\Scripts\python.exe -m pip install -r requirements_a2b.txt
+.\.venv310\Scripts\python.exe -m pip install -r 2B/requirements_a2b.txt
 ```
 
 ### Run A2B from CLI
 
 ```bash
-.\.venv310\Scripts\python.exe run_tbrgs_cli.py --config config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best>
+.\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best> --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
 ```
 
 Example:
 
 ```bash
-.\.venv310\Scripts\python.exe run_tbrgs_cli.py --config config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best
+.\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
 ```
 
 ### Run A2B GUI
 
 ```bash
-python run_tbrgs_gui.py
+python 2B/run_tbrgs_gui.py
 ```
 
 ### Run A2B tests
 
 ```bash
-pytest tests_a2b -q
+pytest 2B/tests_a2b -q
 ```
 

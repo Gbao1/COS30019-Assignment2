@@ -1,8 +1,8 @@
 {
   "data": {
-    "traffic_file": "Scats Data October 2006.xls",
-    "site_file": "SCATSSiteListingSpreadsheet_VicRoads.xls",
-    "location_fallback_file": "Traffic_Count_Locations_with_LONG_LAT.csv",
+    "traffic_file": "../data/input/Scats Data October 2006.xls",
+    "site_file": "../data/input/SCATSSiteListingSpreadsheet_VicRoads.xls",
+    "location_fallback_file": "../data/input/Traffic_Count_Locations_with_LONG_LAT.csv",
     "time_interval_minutes": 15,
     "lookback_steps": 8,
     "horizon_steps": 1,

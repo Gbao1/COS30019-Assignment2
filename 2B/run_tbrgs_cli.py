@@ -2,18 +2,28 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from pathlib import Path
 
 from tbrgs.pipeline import build_context, recommend_routes
 
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+DEFAULT_CONFIG_PATH = SCRIPT_DIR / "config" / "tbrgs_defaults.json"
+DEFAULT_METRICS_OUT = SCRIPT_DIR / "data" / "output" / "tbrgs_metrics_summary.csv"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Traffic-Based Route Guidance System (Assignment 2B)")
-    parser.add_argument("--config", default="config/tbrgs_defaults.json", help="Path to JSON config file")
+    parser.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to JSON config file")
     parser.add_argument("--origin", type=int, required=False, help="Origin SCATS site number")
     parser.add_argument("--destination", type=int, required=False, help="Destination SCATS site number")
     parser.add_argument("--top-k", type=int, default=None, help="How many routes to return")
     parser.add_argument("--model", default="best", choices=["best", "lstm", "gru", "rf"], help="Prediction model")
-    parser.add_argument("--metrics-out", default="tbrgs_metrics_summary.csv", help="CSV output for model comparison")
+    parser.add_argument(
+        "--metrics-out",
+        default=str(DEFAULT_METRICS_OUT),
+        help="CSV output for model comparison",
+    )
     args = parser.parse_args()
 
     ctx = build_context(args.config)
@@ -24,9 +34,11 @@ def main() -> None:
     top_k = int(args.top_k if args.top_k is not None else runtime_cfg["default_top_k"])
 
     routes = recommend_routes(ctx=ctx, origin=origin, destination=destination, top_k=top_k, model_name=args.model)
-    ctx.metrics_summary.to_csv(args.metrics_out, index=False)
+    metrics_path = Path(args.metrics_out)
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    ctx.metrics_summary.to_csv(metrics_path, index=False)
 
-    print("Model comparison saved to", args.metrics_out)
+    print("Model comparison saved to", metrics_path)
     if not routes:
         print("No feasible route found.")
         return

@@ -1,10 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+import sys
 
-from route_search.algorithms.cus2 import solve_ucs
-from route_search.common import reconstruct_path
-from route_search.models import Problem
+try:
+    from route_search.algorithms.cus2 import solve_ucs
+    from route_search.common import reconstruct_path
+    from route_search.models import Problem
+except ModuleNotFoundError:
+    part_a_path = Path(__file__).resolve().parents[2] / "2A"
+    if str(part_a_path) not in sys.path:
+        sys.path.insert(0, str(part_a_path))
+    from route_search.algorithms.cus2 import solve_ucs
+    from route_search.common import reconstruct_path
+    from route_search.models import Problem
 
 from .network_builder import RoadGraph
 from .traffic_model import travel_time_seconds
