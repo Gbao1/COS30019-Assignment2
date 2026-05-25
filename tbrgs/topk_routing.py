@@ -85,6 +85,8 @@ def _remove_root_nodes_except_spur(
     spur_node: int,
 ) -> dict[int, list[tuple[int, float]]]:
     cloned = {k: list(v) for k, v in weighted_adj.items()}
+    # Prevent loops through the fixed root prefix by removing those nodes,
+    # except the current spur node which must remain searchable.
     root_set = set(root_path[:-1])
     for node in root_set:
         if node == spur_node:
@@ -106,6 +108,7 @@ def top_k_routes_with_ucs(
     use_flow_from: str = "start",
     assume_under_capacity: bool = True,
 ) -> list[RouteResult]:
+    """Return up to top_k loopless routes using Yen-style deviations over UCS shortest paths."""
     weighted_adj = _build_weighted_adjacency(
         graph=graph,
         predicted_flow_by_site=predicted_flow_by_site,
@@ -124,6 +127,8 @@ def top_k_routes_with_ucs(
     accepted_paths: list[list[int]] = [first_path]
     candidates: list[tuple[list[int], float]] = []
 
+    # Yen-style iteration: keep the best accepted route, then generate
+    # alternatives by deviating from each prefix (spur) of the latest route.
     for _ in range(1, top_k):
         prev_path = accepted_paths[-1]
         for i in range(len(prev_path) - 1):
