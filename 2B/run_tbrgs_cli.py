@@ -20,6 +20,13 @@ def main() -> None:
     parser.add_argument("--top-k", type=int, default=None, help="How many routes to return")
     parser.add_argument("--model", default="best", choices=["best", "lstm", "gru", "rf"], help="Prediction model")
     parser.add_argument(
+        "--algorithm",
+        default="CUS2",
+        choices=["DFS", "BFS", "GBFS", "AS", "CUS1", "CUS2"],
+        help="Pathfinding algorithm",
+    )
+    parser.add_argument("--hour", type=int, default=None, help="Hour of day (0-23) for directional prediction")
+    parser.add_argument(
         "--metrics-out",
         default=str(DEFAULT_METRICS_OUT),
         help="CSV output for model comparison",
@@ -32,8 +39,17 @@ def main() -> None:
     origin = int(args.origin if args.origin is not None else runtime_cfg["default_origin"])
     destination = int(args.destination if args.destination is not None else runtime_cfg["default_destination"])
     top_k = int(args.top_k if args.top_k is not None else runtime_cfg["default_top_k"])
+    hour_of_day = None if args.hour is None else max(0, min(23, int(args.hour)))
 
-    routes = recommend_routes(ctx=ctx, origin=origin, destination=destination, top_k=top_k, model_name=args.model)
+    routes = recommend_routes(
+        ctx=ctx,
+        origin=origin,
+        destination=destination,
+        top_k=top_k,
+        model_name=args.model,
+        path_method=args.algorithm,
+        hour_of_day=hour_of_day,
+    )
     metrics_path = Path(args.metrics_out)
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
     ctx.metrics_summary.to_csv(metrics_path, index=False)
@@ -43,7 +59,7 @@ def main() -> None:
         print("No feasible route found.")
         return
 
-    print(f"Routes from {origin} to {destination} using model={args.model}:")
+    print(f"Routes from {origin} to {destination} using model={args.model}, algorithm={args.algorithm}, hour={hour_of_day if hour_of_day is not None else 'latest'}:")
 
     best_model_by_site = {site_id: ev.best_model_name for site_id, ev in ctx.site_evaluations.items()}
     if args.model == "best":

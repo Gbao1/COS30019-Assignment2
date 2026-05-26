@@ -31,6 +31,12 @@
     "default_origin": 2000,
     "default_destination": 3002,
     "default_top_k": 5,
-    "default_model": "lstm"
+    "default_model": "lstm",
+    "default_algorithm": "CUS2",
+    "default_hour": 9,
+    "map": {
+      "image_path": "../IBM data_Bor.png",
+      "padding_px": [55, 55, 55, 55]
+    }
   }
 }

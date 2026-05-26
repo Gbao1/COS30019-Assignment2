@@ -73,3 +73,35 @@ def test_top_k_routes_paths_start_and_end_correctly() -> None:
         intersection_delay_seconds=30.0,
     )
     assert all(r.path[0] == 1 and r.path[-1] == 4 for r in routes)
+
+
+def test_top_k_routes_are_sorted_fastest_to_slowest() -> None:
+    graph = build_knn_road_graph(_tiny_sites(), k_neighbors=3, max_neighbor_distance_km=5.0)
+    flows = {1: 500.0, 2: 600.0, 3: 700.0, 4: 800.0}
+    routes = top_k_routes_with_ucs(
+        graph=graph,
+        origin=1,
+        destination=4,
+        predicted_flow_by_site=flows,
+        top_k=5,
+        speed_limit_kmh=60.0,
+        intersection_delay_seconds=30.0,
+    )
+    totals = [r.total_seconds for r in routes]
+    assert totals == sorted(totals)
+
+
+def test_top_k_routes_paths_are_unique() -> None:
+    graph = build_knn_road_graph(_tiny_sites(), k_neighbors=3, max_neighbor_distance_km=5.0)
+    flows = {1: 500.0, 2: 600.0, 3: 700.0, 4: 800.0}
+    routes = top_k_routes_with_ucs(
+        graph=graph,
+        origin=1,
+        destination=4,
+        predicted_flow_by_site=flows,
+        top_k=5,
+        speed_limit_kmh=60.0,
+        intersection_delay_seconds=30.0,
+    )
+    unique_paths = {tuple(r.path) for r in routes}
+    assert len(unique_paths) == len(routes)

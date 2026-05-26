@@ -143,10 +143,13 @@ This repository now includes an Assignment 2B implementation scaffold under the 
   - LSTM
   - GRU
   - Random Forest (third model)
+- Separate training and metric comparison across models (MAE, RMSE, MAPE, inference time).
+- Direction-aware, hour-based edge flow estimation for routing.
 - Comprehensive model evaluation (MAE, RMSE, MAPE, inference time).
 - Travel-time conversion using the assignment flow-speed equation.
 - Integration with Part A via `CUS2` (UCS) for shortest path and top-k route generation.
-- End-to-end CLI and GUI entry points.
+- End-to-end CLI and GUI entry points with interactive map node picking.
+- GUI visualization of the road graph with highlighted top-k recommended routes.
 - A2B test suite (`tests_a2b`) with 15+ tests.
 
 ### New files
@@ -161,42 +164,107 @@ This repository now includes an Assignment 2B implementation scaffold under the 
 
 ### Installation (A2B)
 
-Install required packages in your virtual environment:
+For this workspace, use Python 3.10-3.12 so TensorFlow can run LSTM/GRU training.
 
-```bash
-pip install -r 2B/requirements_a2b.txt
-```
-
-For this workspace, use a Python 3.10-3.12 virtual environment so TensorFlow can run true LSTM/GRU training.
-
-Example on Windows:
+Open PowerShell in the unzipped `13_Intro_AI` folder, then run:
 
 ```bash
 py -3.10 -m venv .venv310
+.\.venv310\Scripts\python.exe -m pip install --upgrade pip
 .\.venv310\Scripts\python.exe -m pip install -r 2B/requirements_a2b.txt
 ```
+
+If script execution is blocked when activating venv:
+
+```bash
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+```
+
+You can run everything without activating, by calling `.venv310` Python directly.
+
+### Optional: Windows GPU Setup (DirectML)
+
+If you want GPU acceleration on native Windows, use a separate environment with TensorFlow 2.10 + DirectML.
+
+Important:
+- Native Windows TensorFlow GPU via CUDA is not supported for newer TF versions.
+- DirectML currently works with the TF 2.10 stack used below.
+- Do not install `2B/requirements_a2b.txt` into this GPU env because it requires `tensorflow>=2.12` and will break DirectML compatibility.
+
+Create and install GPU environment:
+
+```bash
+py -3.10 -m venv .venv-tf-gpu
+.\.venv-tf-gpu\Scripts\python.exe -m pip install --upgrade pip
+.\.venv-tf-gpu\Scripts\python.exe -m pip install "numpy<2" pandas==2.3.3 scikit-learn==1.7.2 openpyxl xlrd pytest
+.\.venv-tf-gpu\Scripts\python.exe -m pip install tensorflow-cpu==2.10.0 tensorflow-directml-plugin
+```
+
+Quick GPU verification:
+
+```bash
+.\.venv-tf-gpu\Scripts\python.exe -c "import tensorflow as tf; print('TF', tf.__version__); print('GPUs', tf.config.list_physical_devices('GPU'))"
+```
+
+Expected outcome:
+- TensorFlow version is `2.10.0`
+- At least one GPU appears in the device list (DirectML adapter)
+
+Run A2B with GPU environment:
+
+```bash
+Set-Location "C:\Users\Acer\OneDrive\Documents\Swin\13_Intro_AI"
+.\.venv-tf-gpu\Scripts\Activate.ps1
+$env:DML_VISIBLE_DEVICES="0"
+$env:TF_CPP_MIN_LOG_LEVEL="2"
+python 2B\run_tbrgs_gui.py
+```
+
+Notes:
+- `DML_VISIBLE_DEVICES="0"` prefers the first adapter (commonly NVIDIA) and can reduce overhead from multi-adapter initialization.
+- TensorFlow DirectML logs such as `Could not identify NUMA node` are informational on Windows.
 
 ### Run A2B from CLI
 
 ```bash
-.\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best> --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
+.\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best> --algorithm <DFS|BFS|GBFS|AS|CUS1|CUS2> --hour <0-23> --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
 ```
 
 Example:
 
 ```bash
-.\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
+.\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best --algorithm CUS2 --hour 9 --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
 ```
+
+Notes:
+- Returned routes are ordered fastest to slowest by predicted total travel time.
+- `--model best` uses the best-performing model per site from evaluation metrics.
 
 ### Run A2B GUI
 
 ```bash
-python 2B/run_tbrgs_gui.py
+.\.venv310\Scripts\python.exe 2B/run_tbrgs_gui.py
 ```
+
+GUI workflow:
+- Select model, pathfinding algorithm, and hour of day.
+- Left-click a node to set origin.
+- Right-click a node to set destination.
+- Click Find Path to display the top-k routes and total time.
 
 ### Run A2B tests
 
 ```bash
-pytest 2B/tests_a2b -q
+.\.venv310\Scripts\python.exe -m pytest 2B/tests_a2b -q
 ```
+
+Current A2B test coverage includes:
+- Data sequence construction and split behavior.
+- Hourly aggregation and lookback extraction.
+- Road graph neighbor constraints and routing connectivity.
+- Route result properties: start/end validity, top-k bound, uniqueness, and fastest-to-slowest ordering.
+- Traffic speed/time behavior under varying flow and distance.
+
+Expected result:
+- `20 passed` on a clean setup.
 

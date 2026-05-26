@@ -26,14 +26,15 @@ class SiteModels:
 def _build_lstm(input_steps: int, output_steps: int, units: int):
     try:
         from tensorflow.keras import Sequential
-        from tensorflow.keras.layers import Dense, Input, LSTM
+        from tensorflow.keras.layers import Dense, Input, LSTMCell, RNN
         from tensorflow.keras.optimizers import Adam
     except ImportError as exc:  # pragma: no cover
         raise ImportError("TensorFlow is required to train LSTM/GRU models.") from exc
 
     model = Sequential([
         Input(shape=(input_steps, 1)),
-        LSTM(units),
+        # DirectML does not implement CuDNN RNN kernels; explicit cells keep execution portable.
+        RNN(LSTMCell(units)),
         Dense(output_steps),
     ])
     model.compile(optimizer=Adam(), loss="mse")
@@ -43,14 +44,15 @@ def _build_lstm(input_steps: int, output_steps: int, units: int):
 def _build_gru(input_steps: int, output_steps: int, units: int):
     try:
         from tensorflow.keras import Sequential
-        from tensorflow.keras.layers import Dense, GRU, Input
+        from tensorflow.keras.layers import Dense, GRUCell, Input, RNN
         from tensorflow.keras.optimizers import Adam
     except ImportError as exc:  # pragma: no cover
         raise ImportError("TensorFlow is required to train LSTM/GRU models.") from exc
 
     model = Sequential([
         Input(shape=(input_steps, 1)),
-        GRU(units),
+        # DirectML does not implement CuDNN RNN kernels; explicit cells keep execution portable.
+        RNN(GRUCell(units)),
         Dense(output_steps),
     ])
     model.compile(optimizer=Adam(), loss="mse")

@@ -14,6 +14,21 @@ class RoadGraph:
     distance_km: dict[tuple[int, int], float]
 
 
+def _clean_site_coords(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["site_id"] = pd.to_numeric(out["site_id"], errors="coerce")
+    out["lat"] = pd.to_numeric(out["lat"], errors="coerce")
+    out["lon"] = pd.to_numeric(out["lon"], errors="coerce")
+    out = out.dropna().drop_duplicates(subset=["site_id"])
+
+    # Remove obviously invalid coordinates that collapse map scaling (e.g., 0,0).
+    out = out[(out["lat"] != 0.0) & (out["lon"] != 0.0)]
+    out = out[(out["lat"] >= -90.0) & (out["lat"] <= 90.0)]
+    out = out[(out["lon"] >= -180.0) & (out["lon"] <= 180.0)]
+    out["site_id"] = out["site_id"].astype(int)
+    return out
+
+
 def load_scats_sites_from_traffic_workbook(traffic_file: str | Path) -> pd.DataFrame:
     path = Path(traffic_file)
     if not path.exists():
@@ -39,12 +54,7 @@ def load_scats_sites_from_traffic_workbook(traffic_file: str | Path) -> pd.DataF
 
     out = df[required].copy()
     out.columns = ["site_id", "lat", "lon"]
-    out["site_id"] = pd.to_numeric(out["site_id"], errors="coerce")
-    out["lat"] = pd.to_numeric(out["lat"], errors="coerce")
-    out["lon"] = pd.to_numeric(out["lon"], errors="coerce")
-    out = out.dropna().drop_duplicates(subset=["site_id"])
-    out["site_id"] = out["site_id"].astype(int)
-    return out
+    return _clean_site_coords(out)
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -80,12 +90,7 @@ def load_scats_sites(site_file: str | Path, fallback_file: str | Path | None = N
             if scats_col and lat_col and lon_col:
                 out = df[[scats_col, lat_col, lon_col]].copy()
                 out.columns = ["site_id", "lat", "lon"]
-                out["site_id"] = pd.to_numeric(out["site_id"], errors="coerce")
-                out["lat"] = pd.to_numeric(out["lat"], errors="coerce")
-                out["lon"] = pd.to_numeric(out["lon"], errors="coerce")
-                out = out.dropna().drop_duplicates(subset=["site_id"])
-                out["site_id"] = out["site_id"].astype(int)
-                return out
+                return _clean_site_coords(out)
         except Exception:
             # Some provided xls files contain legacy workbook formulas that fail in xlrd.
             # In that case we continue with the approved CSV fallback dataset.
@@ -104,12 +109,7 @@ def load_scats_sites(site_file: str | Path, fallback_file: str | Path | None = N
 
     out = fallback[[id_col, lat_col, lon_col]].copy()
     out.columns = ["site_id", "lat", "lon"]
-    out["site_id"] = pd.to_numeric(out["site_id"], errors="coerce")
-    out["lat"] = pd.to_numeric(out["lat"], errors="coerce")
-    out["lon"] = pd.to_numeric(out["lon"], errors="coerce")
-    out = out.dropna().drop_duplicates(subset=["site_id"])
-    out["site_id"] = out["site_id"].astype(int)
-    return out
+    return _clean_site_coords(out)
 
 
 def build_knn_road_graph(sites_df: pd.DataFrame, k_neighbors: int, max_neighbor_distance_km: float) -> RoadGraph:

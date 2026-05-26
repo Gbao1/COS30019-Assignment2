@@ -36,6 +36,7 @@ dist/
 # Local extracted assignment artifacts
 _assignment_extract/
 .venv310/
+.venv-tf-gpu/
 
 # Local docs/images
 *.md

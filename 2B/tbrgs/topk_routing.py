@@ -8,6 +8,7 @@ try:
     from route_search.algorithms.cus2 import solve_ucs
     from route_search.common import reconstruct_path
     from route_search.models import Problem
+    from route_search.solver import solve as solve_search
 except ModuleNotFoundError:
     part_a_path = Path(__file__).resolve().parents[2] / "2A"
     if str(part_a_path) not in sys.path:
@@ -15,6 +16,7 @@ except ModuleNotFoundError:
     from route_search.algorithms.cus2 import solve_ucs
     from route_search.common import reconstruct_path
     from route_search.models import Problem
+    from route_search.solver import solve as solve_search
 
 from .network_builder import RoadGraph
 from .traffic_model import travel_time_seconds
@@ -29,6 +31,7 @@ class RouteResult:
 def _build_weighted_adjacency(
     graph: RoadGraph,
     predicted_flow_by_site: dict[int, float],
+    predicted_flow_by_link: dict[tuple[int, int], float] | None,
     speed_limit_kmh: float,
     intersection_delay_seconds: float,
     use_flow_from: str,
@@ -40,8 +43,11 @@ def _build_weighted_adjacency(
             dist_km = graph.distance_km.get((src, dst))
             if dist_km is None:
                 continue
-            flow_site = src if use_flow_from.lower() == "start" else dst
-            flow = float(predicted_flow_by_site.get(flow_site, 0.0))
+            if predicted_flow_by_link is not None:
+                flow = float(predicted_flow_by_link.get((src, dst), 0.0))
+            else:
+                flow_site = src if use_flow_from.lower() == "start" else dst
+                flow = float(predicted_flow_by_site.get(flow_site, 0.0))
             sec = travel_time_seconds(
                 distance_km=dist_km,
                 flow_veh_per_hour=flow,
@@ -107,21 +113,24 @@ def _remove_root_nodes_except_spur(
     return cloned
 
 
-def top_k_routes_with_ucs(
+def top_k_routes_with_search(
     graph: RoadGraph,
     origin: int,
     destination: int,
     predicted_flow_by_site: dict[int, float],
+    predicted_flow_by_link: dict[tuple[int, int], float] | None,
     top_k: int,
     speed_limit_kmh: float,
     intersection_delay_seconds: float,
+    path_method: str = "CUS2",
     use_flow_from: str = "start",
     assume_under_capacity: bool = True,
 ) -> list[RouteResult]:
-    """Return up to top_k loopless routes using Yen-style deviations over UCS shortest paths."""
+    """Return up to top_k loopless routes using Yen-style deviations over selected search method."""
     weighted_adj = _build_weighted_adjacency(
         graph=graph,
         predicted_flow_by_site=predicted_flow_by_site,
+        predicted_flow_by_link=predicted_flow_by_link,
         speed_limit_kmh=speed_limit_kmh,
         intersection_delay_seconds=intersection_delay_seconds,
         use_flow_from=use_flow_from,
@@ -129,13 +138,15 @@ def top_k_routes_with_ucs(
     )
 
     first_problem = _to_problem(graph.nodes, weighted_adj, origin, destination)
-    first_goal, _ = solve_ucs(first_problem)
+    first_goal, _ = solve_search(first_problem, path_method)
     if first_goal is None:
         return []
 
     first_path = reconstruct_path(first_goal)
     accepted_paths: list[list[int]] = [first_path]
+    accepted_path_keys: set[tuple[int, ...]] = {tuple(first_path)}
     candidates: list[tuple[list[int], float]] = []
+    candidate_keys: set[tuple[int, ...]] = set()
 
     # Yen-style iteration: keep the best accepted route, then generate
     # alternatives by deviating from each prefix (spur) of the latest route.
@@ -149,23 +160,54 @@ def top_k_routes_with_ucs(
             pruned = _remove_root_nodes_except_spur(without_same_root, root_path, spur_node)
 
             spur_problem = _to_problem(graph.nodes, pruned, spur_node, destination)
-            spur_goal, _ = solve_ucs(spur_problem)
+            spur_goal, _ = solve_search(spur_problem, path_method)
             if spur_goal is None:
                 continue
 
             spur_path = reconstruct_path(spur_goal)
             total_path = root_path[:-1] + spur_path
-            if total_path in accepted_paths:
+            path_key = tuple(total_path)
+            if path_key in accepted_path_keys or path_key in candidate_keys:
                 continue
             total_cost = _path_cost(weighted_adj, total_path)
             candidates.append((total_path, total_cost))
+            candidate_keys.add(path_key)
 
         if not candidates:
             break
 
         candidates.sort(key=lambda x: x[1])
         best_path, _ = candidates.pop(0)
+        candidate_keys.discard(tuple(best_path))
         accepted_paths.append(best_path)
+        accepted_path_keys.add(tuple(best_path))
 
-    results = [RouteResult(path=p, total_seconds=_path_cost(weighted_adj, p)) for p in accepted_paths[:top_k]]
-    return results
+    results = [RouteResult(path=p, total_seconds=_path_cost(weighted_adj, p)) for p in accepted_paths]
+    results.sort(key=lambda r: r.total_seconds)
+    return results[:top_k]
+
+
+def top_k_routes_with_ucs(
+    graph: RoadGraph,
+    origin: int,
+    destination: int,
+    predicted_flow_by_site: dict[int, float],
+    top_k: int,
+    speed_limit_kmh: float,
+    intersection_delay_seconds: float,
+    use_flow_from: str = "start",
+    assume_under_capacity: bool = True,
+) -> list[RouteResult]:
+    return top_k_routes_with_search(
+        graph=graph,
+        origin=origin,
+        destination=destination,
+        predicted_flow_by_site=predicted_flow_by_site,
+        predicted_flow_by_link=None,
+        top_k=top_k,
+        speed_limit_kmh=speed_limit_kmh,
+        intersection_delay_seconds=intersection_delay_seconds,
+        path_method="CUS2",
+        use_flow_from=use_flow_from,
+        assume_under_capacity=assume_under_capacity,
+    )
