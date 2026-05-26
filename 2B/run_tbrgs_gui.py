@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import threading
 import tkinter as tk
 from tkinter import ttk
+
+# Reduce TensorFlow C++ INFO logging noise in GUI runs.
+# Users can still override this externally if they want verbose logs.
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 from tbrgs.config_loader import load_config
 from tbrgs.network_builder import (
@@ -24,6 +29,19 @@ MAX_MAP_ZOOM = 3.0
 ZOOM_STEP = 1.12
 DEFAULT_MIN_MAP_SIZE = (1100, 800)
 
+CANVAS_BG = "#f8fafc"
+EDGE_COLOR = "#b9c5d3"
+EDGE_WIDTH = 1.2
+NODE_OUTER_FILL = "#eef2ff"
+NODE_OUTER_OUTLINE = "#5b6b87"
+NODE_CORE_FILL = "#7a8ea8"
+NODE_LABEL_COLOR = "#243447"
+ORIGIN_FILL = "#d9fbe5"
+ORIGIN_OUTLINE = "#1b8a4c"
+DEST_FILL = "#ffe1e1"
+DEST_OUTLINE = "#b42323"
+ROUTE_SHADOW_COLOR = "#cfd8e3"
+
 
 class TBRGSApp:
     def __init__(self, root: tk.Tk) -> None:
@@ -32,7 +50,7 @@ class TBRGSApp:
         self.root.geometry("1200x700")
 
         self.config = load_config(DEFAULT_CONFIG_PATH)
-        self.ctx: TBRGSContext | None = None
+        self._ctx_by_scope: dict[tuple[str, ...], TBRGSContext] = {}
         self._ctx_lock = threading.Lock()
         self.is_busy = False
         self._route_colors = ["#d7191c", "#2c7bb6", "#1a9641", "#fdae61", "#984ea3"]
@@ -40,6 +58,7 @@ class TBRGSApp:
         self._current_routes = None
         self._hover_route_idx: int | None = None
         self._current_route_count = 0
+        self._legend_widgets: dict[int, tuple[tk.Canvas, int, tk.Label]] = {}
         self._is_dragging_map = False
         self._pressed_origin_node: int | None = None
         self.graph = self._load_graph_preview()
@@ -145,15 +164,17 @@ class TBRGSApp:
 
         self.output = tk.Text(text_frame, wrap=tk.WORD)
         self.output.pack(fill=tk.BOTH, expand=True)
+        self.output.configure(state=tk.DISABLED)
 
         canvas_wrap = ttk.Frame(viz_frame)
         canvas_wrap.pack(fill=tk.BOTH, expand=True)
+        self.canvas_wrap = canvas_wrap
 
         x_scroll = ttk.Scrollbar(canvas_wrap, orient=tk.HORIZONTAL)
         y_scroll = ttk.Scrollbar(canvas_wrap, orient=tk.VERTICAL)
         self.canvas = tk.Canvas(
             canvas_wrap,
-            bg="white",
+            bg=CANVAS_BG,
             highlightthickness=1,
             highlightbackground="#d0d0d0",
             xscrollcommand=x_scroll.set,
@@ -168,6 +189,10 @@ class TBRGSApp:
         canvas_wrap.rowconfigure(0, weight=1)
         canvas_wrap.columnconfigure(0, weight=1)
 
+        # Sticky legend overlay pinned to viewport top-left (independent of canvas scrolling).
+        self.legend_overlay = tk.Frame(canvas_wrap, bg="#ffffff", highlightthickness=1, highlightbackground="#d7dee8")
+        self.legend_overlay.place_forget()
+
         self.canvas.bind("<ButtonPress-1>", self.on_left_press)
         self.canvas.bind("<B1-Motion>", self.on_left_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_left_release)
@@ -180,8 +205,21 @@ class TBRGSApp:
         self.main_pane.bind("<Configure>", self._ensure_default_split)
 
         self._draw_base_graph()
-        self.output.insert(tk.END, "Ready. Left-click to set origin, right-click to set destination, then click Find Path.\n")
+        self._set_output_text("Ready. Left-click to set origin, right-click to set destination, then click Find Path.\n")
         self.root.after(150, self._ensure_default_split)
+
+    def _set_output_text(self, text: str) -> None:
+        self.output.configure(state=tk.NORMAL)
+        self.output.delete("1.0", tk.END)
+        self.output.insert(tk.END, text)
+        self.output.see(tk.END)
+        self.output.configure(state=tk.DISABLED)
+
+    def _append_output_text(self, text: str) -> None:
+        self.output.configure(state=tk.NORMAL)
+        self.output.insert(tk.END, text)
+        self.output.see(tk.END)
+        self.output.configure(state=tk.DISABLED)
 
     def _load_graph_preview(self) -> RoadGraph:
         data_cfg = self.config["data"]
@@ -245,8 +283,17 @@ class TBRGSApp:
 
     def _draw_base_graph(self) -> None:
         self.canvas.delete("all")
+        self._clear_legend_overlay()
         width, height = self._map_draw_size()
         self.canvas.configure(scrollregion=(0, 0, width, height))
+
+        # Subtle map backdrop for better depth perception.
+        self.canvas.create_rectangle(0, 0, width, height, fill=CANVAS_BG, outline="")
+        grid_step = 120
+        for x in range(0, width, grid_step):
+            self.canvas.create_line(x, 0, x, height, fill="#edf2f7", width=1)
+        for y in range(0, height, grid_step):
+            self.canvas.create_line(0, y, width, y, fill="#edf2f7", width=1)
 
         px = self._node_pixels()
 
@@ -256,17 +303,34 @@ class TBRGSApp:
                 if dst not in px:
                     continue
                 x2, y2 = px[dst]
-                self.canvas.create_line(x1, y1, x2, y2, fill="#8a8a8a", width=1)
+                self.canvas.create_line(
+                    x1,
+                    y1,
+                    x2,
+                    y2,
+                    fill=EDGE_COLOR,
+                    width=EDGE_WIDTH,
+                    capstyle=tk.ROUND,
+                )
 
         for node_id, (x, y) in px.items():
-            self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill="#ff4fc3", outline="#5c2f55", width=1)
-            self.canvas.create_text(x + 8, y - 8, text=str(node_id), anchor=tk.NW, fill="#1a1a1a", font=("Segoe UI", 8, "bold"))
+            # Layered node marker for clearer visual hierarchy.
+            self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill=NODE_OUTER_FILL, outline=NODE_OUTER_OUTLINE, width=1)
+            self.canvas.create_oval(x - 2.5, y - 2.5, x + 2.5, y + 2.5, fill=NODE_CORE_FILL, outline="")
+            self.canvas.create_text(
+                x + 9,
+                y - 9,
+                text=str(node_id),
+                anchor=tk.NW,
+                fill=NODE_LABEL_COLOR,
+                font=("Segoe UI", 8, "bold"),
+            )
 
         try:
             origin = int(self.origin_var.get())
             if origin in px:
                 x, y = px[origin]
-                self.canvas.create_oval(x - 7, y - 7, x + 7, y + 7, fill="#d8f3df", outline="#0a7d34", width=2)
+                self.canvas.create_oval(x - 9, y - 9, x + 9, y + 9, fill=ORIGIN_FILL, outline=ORIGIN_OUTLINE, width=2)
                 self.canvas.create_text(x + 10, y + 10, text="O", fill="#0a7d34", anchor=tk.NW, font=("Segoe UI", 9, "bold"))
         except Exception:
             pass
@@ -275,7 +339,7 @@ class TBRGSApp:
             destination = int(self.destination_var.get())
             if destination in px:
                 x, y = px[destination]
-                self.canvas.create_oval(x - 7, y - 7, x + 7, y + 7, fill="#f8d7da", outline="#b30000", width=2)
+                self.canvas.create_oval(x - 9, y - 9, x + 9, y + 9, fill=DEST_FILL, outline=DEST_OUTLINE, width=2)
                 self.canvas.create_text(x + 10, y + 10, text="D", fill="#b30000", anchor=tk.NW, font=("Segoe UI", 9, "bold"))
         except Exception:
             pass
@@ -284,6 +348,47 @@ class TBRGSApp:
         self._current_routes = None
         self._hover_route_idx = None
         self._current_route_count = 0
+        self._clear_legend_overlay()
+
+    def _clear_legend_overlay(self) -> None:
+        for child in self.legend_overlay.winfo_children():
+            child.destroy()
+        self._legend_widgets.clear()
+        self.legend_overlay.place_forget()
+
+    def _build_legend_overlay(self, routes) -> None:
+        self._clear_legend_overlay()
+        if not routes:
+            return
+
+        for idx, route in enumerate(routes[: len(self._route_colors)]):
+            color = self._route_colors[idx % len(self._route_colors)]
+            mins = route.total_seconds / 60.0
+
+            row = tk.Frame(self.legend_overlay, bg="#ffffff")
+            row.pack(fill=tk.X, padx=8, pady=3)
+
+            swatch = tk.Canvas(row, width=28, height=10, bg="#ffffff", highlightthickness=0, bd=0)
+            swatch_line = swatch.create_line(2, 5, 26, 5, fill=color, width=3, capstyle=tk.ROUND)
+            swatch.pack(side=tk.LEFT)
+
+            text = tk.Label(
+                row,
+                text=f"Route {idx + 1}: {mins:.2f} min",
+                bg="#ffffff",
+                fg="#111",
+                font=("Segoe UI", 9),
+                anchor="w",
+            )
+            text.pack(side=tk.LEFT, padx=(6, 0))
+
+            for widget in (row, swatch, text):
+                widget.bind("<Enter>", lambda _e, i=idx: self._on_legend_hover(i))
+                widget.bind("<Leave>", lambda _e: self._on_legend_leave())
+
+            self._legend_widgets[idx] = (swatch, swatch_line, text)
+
+        self.legend_overlay.place(x=10, y=10)
 
     def _ensure_default_split(self, _event: tk.Event | None = None) -> None:
         if self._default_split_applied:
@@ -385,7 +490,7 @@ class TBRGSApp:
             return
 
         self.origin_var.set(str(nearest_node))
-        self.output.insert(tk.END, f"Picked origin (left-click): {nearest_node}\n")
+        self._append_output_text(f"Picked origin (left-click): {nearest_node}\n")
         self.status_var.set("Origin selected. Right-click a node to set destination.")
 
         self._clear_current_routes()
@@ -402,7 +507,7 @@ class TBRGSApp:
             return
 
         self.destination_var.set(str(nearest_node))
-        self.output.insert(tk.END, f"Picked destination (right-click): {nearest_node}\n")
+        self._append_output_text(f"Picked destination (right-click): {nearest_node}\n")
         self.status_var.set("Destination selected. Click Find Path.")
         self._clear_current_routes()
         self._draw_base_graph()
@@ -423,35 +528,35 @@ class TBRGSApp:
                     continue
                 x1, y1 = px[a]
                 x2, y2 = px[b]
-                self.canvas.create_line(x1, y1, x2, y2, fill=color, width=3, tags=(line_tag, "route_line"))
+                self.canvas.create_line(
+                    x1,
+                    y1,
+                    x2,
+                    y2,
+                    fill=ROUTE_SHADOW_COLOR,
+                    width=6,
+                    capstyle=tk.ROUND,
+                    tags=(line_tag, "route_line"),
+                )
+                self.canvas.create_line(
+                    x1,
+                    y1,
+                    x2,
+                    y2,
+                    fill=color,
+                    width=3.5,
+                    capstyle=tk.ROUND,
+                    tags=(line_tag, "route_line"),
+                )
 
             for node_id in path:
                 if node_id not in px:
                     continue
                 x, y = px[node_id]
-                self.canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill=color, outline="", tags=(node_tag, "route_node"))
+                self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill="white", outline=color, width=2, tags=(node_tag, "route_node"))
+                self.canvas.create_oval(x - 2.5, y - 2.5, x + 2.5, y + 2.5, fill=color, outline="", tags=(node_tag, "route_node"))
 
-        # simple legend
-        y = 16
-        for idx, route in enumerate(routes[: len(self._route_colors)]):
-            color = self._route_colors[idx % len(self._route_colors)]
-            mins = route.total_seconds / 60.0
-            tag = f"legend_route_{idx}"
-            line_tag = f"legend_line_{idx}"
-            text_tag = f"legend_text_{idx}"
-            self.canvas.create_line(18, y, 46, y, fill=color, width=3, tags=(tag, "legend", line_tag))
-            self.canvas.create_text(
-                52,
-                y,
-                anchor=tk.W,
-                text=f"Route {idx + 1}: {mins:.2f} min",
-                fill="#111",
-                font=("Segoe UI", 9),
-                tags=(tag, "legend", text_tag),
-            )
-            self.canvas.tag_bind(tag, "<Enter>", lambda _e, i=idx: self._on_legend_hover(i))
-            self.canvas.tag_bind(tag, "<Leave>", lambda _e: self._on_legend_leave())
-            y += 18
+        self._build_legend_overlay(routes)
 
         self._apply_route_highlight()
 
@@ -471,8 +576,11 @@ class TBRGSApp:
             legend_color = color if not is_dimmed else "#b8b8b8"
             legend_width = 5 if is_hovered else 3
             legend_text_color = "#111" if not is_dimmed else "#888"
-            self.canvas.itemconfigure(f"legend_line_{idx}", fill=legend_color, width=legend_width)
-            self.canvas.itemconfigure(f"legend_text_{idx}", fill=legend_text_color)
+            legend_items = self._legend_widgets.get(idx)
+            if legend_items is not None:
+                swatch, swatch_line, text = legend_items
+                swatch.itemconfigure(swatch_line, fill=legend_color, width=legend_width)
+                text.configure(fg=legend_text_color)
 
     def _on_legend_hover(self, idx: int) -> None:
         if self._current_routes is None:
@@ -490,7 +598,7 @@ class TBRGSApp:
         if self.is_busy:
             return
 
-        self.output.delete("1.0", tk.END)
+        self._set_output_text("")
         self._clear_current_routes()
         try:
             origin = int(self.origin_var.get())
@@ -502,7 +610,7 @@ class TBRGSApp:
 
             cache_key = (origin, destination, top_k, model, algorithm, hour_of_day)
             if cache_key in self._route_cache:
-                self.output.insert(tk.END, "Using cached result for this request.\n")
+                self._append_output_text("Using cached result for this request.\n")
                 self._render_routes_result(
                     routes=self._route_cache[cache_key],
                     origin=origin,
@@ -521,7 +629,7 @@ class TBRGSApp:
                 daemon=True,
             ).start()
         except Exception as exc:  # pragma: no cover
-            self.output.insert(tk.END, f"Error: {exc}\n")
+            self._append_output_text(f"Error: {exc}\n")
             self._set_busy(False, "Input error. Please check values and try again.")
 
     def _compute_routes_worker(
@@ -535,12 +643,18 @@ class TBRGSApp:
         cache_key: tuple[int, int, int, str, str, int],
     ) -> None:
         try:
+            scope_models = self._training_scope_for_model(model)
+            scope_key = self._scope_key_for_model(model)
             with self._ctx_lock:
-                if self.ctx is None:
-                    self.ctx = build_context(DEFAULT_CONFIG_PATH)
+                if scope_key not in self._ctx_by_scope:
+                    self._ctx_by_scope[scope_key] = build_context(
+                        DEFAULT_CONFIG_PATH,
+                        selected_models=scope_models,
+                    )
+                ctx = self._ctx_by_scope[scope_key]
 
             routes = recommend_routes(
-                ctx=self.ctx,
+                ctx=ctx,
                 origin=origin,
                 destination=destination,
                 top_k=top_k,
@@ -564,6 +678,24 @@ class TBRGSApp:
             msg = str(exc)
             self.root.after(0, lambda m=msg: self._render_error(m))
 
+    @staticmethod
+    def _training_scope_for_model(model_name: str) -> list[str] | None:
+        key = model_name.strip().lower()
+        if key == "best":
+            return None
+        if key in {"lstm", "gru", "rf"}:
+            return [key]
+        return None
+
+    @staticmethod
+    def _scope_key_for_model(model_name: str) -> tuple[str, ...]:
+        key = model_name.strip().lower()
+        if key == "best":
+            return ("best",)
+        if key in {"lstm", "gru", "rf"}:
+            return (key,)
+        return ("best",)
+
     def _render_routes_result(
         self,
         routes,
@@ -573,31 +705,47 @@ class TBRGSApp:
         algorithm: str,
         hour_of_day: int,
     ) -> None:
-        self.output.delete("1.0", tk.END)
+        self._set_output_text("")
         if not routes:
-            self.output.insert(tk.END, "No feasible route found.\n")
+            self._append_output_text("No feasible route found.\n")
             self._clear_current_routes()
             self._draw_base_graph()
             self._set_busy(False, "No route found. Try different nodes/algorithm/hour.")
             return
 
-        self.output.insert(
-            tk.END,
-            f"Routes from {origin} to {destination} using model={model}, algorithm={algorithm}, hour={hour_of_day}:\n\n",
+        self._append_output_text(
+            f"Routes from {origin} to {destination} using model={model}, algorithm={algorithm}, hour={hour_of_day}:\n\n"
         )
+
+        best_model_by_site: dict[int, str] = {}
+        if model == "best":
+            scope_key = self._scope_key_for_model(model)
+            ctx = self._ctx_by_scope.get(scope_key)
+            if ctx is not None:
+                best_model_by_site = {site_id: ev.best_model_name for site_id, ev in ctx.site_evaluations.items()}
+
         for idx, route in enumerate(routes, start=1):
             nodes = " -> ".join(str(n) for n in route.path)
-            self.output.insert(
-                tk.END,
-                f"{idx}. Time: {route.total_seconds / 60.0:.2f} min\n"
-                f"   Path: {nodes}\n\n",
-            )
+            if model == "best" and best_model_by_site:
+                route_models = [best_model_by_site.get(node) for node in route.path if node in best_model_by_site]
+                unique_route_models = [m for m in dict.fromkeys(route_models) if m is not None]
+                model_info = "/".join(unique_route_models) if unique_route_models else "unknown"
+                self._append_output_text(
+                    f"{idx}. Time: {route.total_seconds / 60.0:.2f} min\n"
+                    f"   Path: {nodes}\n"
+                    f"   Models on path: {model_info}\n\n"
+                )
+            else:
+                self._append_output_text(
+                    f"{idx}. Time: {route.total_seconds / 60.0:.2f} min\n"
+                    f"   Path: {nodes}\n"
+                    f"   Model used: {model}\n\n"
+                )
         self._draw_routes(routes)
         self._set_busy(False, "Routes updated.")
 
     def _render_error(self, message: str) -> None:
-        self.output.delete("1.0", tk.END)
-        self.output.insert(tk.END, f"Error: {message}\n")
+        self._set_output_text(f"Error: {message}\n")
         self._set_busy(False, "Failed to compute routes. Please retry.")
 
 

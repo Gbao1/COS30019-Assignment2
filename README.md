@@ -260,6 +260,11 @@ python 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin 2000 
 Notes:
 - Returned routes are ordered fastest to slowest by predicted total travel time.
 - `--model best` uses the best-performing model per site from evaluation metrics.
+- Training scope now follows model selection:
+  - `--model lstm` trains LSTM only
+  - `--model gru` trains GRU only
+  - `--model rf` trains Random Forest only
+  - `--model best` trains all three and picks best per site
 
 ### Run A2B GUI
 
@@ -278,6 +283,10 @@ GUI workflow:
 - Left-click a node to set origin.
 - Right-click a node to set destination.
 - Click Find Path to display the top-k routes and total time.
+
+Model-selection behavior in GUI:
+- Choosing `lstm`, `gru`, or `rf` trains only that selected model (faster startup).
+- Choosing `best` trains all models and selects the best model per site (slower startup, best-per-site comparison).
 
 ### Run A2B tests
 

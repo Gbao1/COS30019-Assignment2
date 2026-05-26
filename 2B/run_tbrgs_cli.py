@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import argparse
+import os
 from collections import Counter
 from pathlib import Path
+
+# Suppress TensorFlow INFO logs in CLI output while keeping warnings/errors.
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 from tbrgs.pipeline import build_context, recommend_routes
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = SCRIPT_DIR / "config" / "tbrgs_defaults.json"
-DEFAULT_METRICS_OUT = SCRIPT_DIR / "data" / "output" / "tbrgs_metrics_summary.csv"
 
 
 def main() -> None:
@@ -26,14 +29,10 @@ def main() -> None:
         help="Pathfinding algorithm",
     )
     parser.add_argument("--hour", type=int, default=None, help="Hour of day (0-23) for directional prediction")
-    parser.add_argument(
-        "--metrics-out",
-        default=str(DEFAULT_METRICS_OUT),
-        help="CSV output for model comparison",
-    )
     args = parser.parse_args()
 
-    ctx = build_context(args.config)
+    selected_models = None if args.model == "best" else [args.model]
+    ctx = build_context(args.config, selected_models=selected_models)
     runtime_cfg = ctx.config["runtime"]
 
     origin = int(args.origin if args.origin is not None else runtime_cfg["default_origin"])
@@ -50,11 +49,6 @@ def main() -> None:
         path_method=args.algorithm,
         hour_of_day=hour_of_day,
     )
-    metrics_path = Path(args.metrics_out)
-    metrics_path.parent.mkdir(parents=True, exist_ok=True)
-    ctx.metrics_summary.to_csv(metrics_path, index=False)
-
-    print("Model comparison saved to", metrics_path)
     if not routes:
         print("No feasible route found.")
         return

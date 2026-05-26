@@ -30,8 +30,10 @@ class TBRGSContext:
     hourly_profile: pd.DataFrame
 
 
-def build_context(config_path: str | Path | None = None) -> TBRGSContext:
+def build_context(config_path: str | Path | None = None, selected_models: list[str] | None = None) -> TBRGSContext:
     cfg = load_config(config_path)
+    if selected_models is not None:
+        cfg.setdefault("runtime", {})["train_models"] = [m.lower() for m in selected_models]
     data_cfg = cfg["data"]
     net_cfg = cfg["network"]
 

@@ -16,9 +16,9 @@ except ImportError as exc:  # pragma: no cover
 
 @dataclass
 class SiteModels:
-    lstm_model: Any
-    gru_model: Any
-    rf_model: RandomForestRegressor
+    lstm_model: Any | None
+    gru_model: Any | None
+    rf_model: RandomForestRegressor | None
     x_scaler: MinMaxScaler
     y_scaler: MinMaxScaler
 
@@ -84,6 +84,7 @@ def train_site_models(
     epochs: int = 10,
     batch_size: int = 32,
     random_seed: int = 42,
+    selected_models: list[str] | None = None,
 ) -> SiteModels:
     if len(x_train) == 0:
         raise ValueError("x_train is empty. Not enough samples for training.")
@@ -96,28 +97,41 @@ def train_site_models(
     x_train_dl = x_train_s.reshape((x_train_s.shape[0], x_train_s.shape[1], 1))
     x_val_dl = x_val_s.reshape((x_val_s.shape[0], x_val_s.shape[1], 1)) if len(x_val_s) else x_val_s
 
-    lstm_model = _build_lstm(input_steps=x_train.shape[1], output_steps=output_steps, units=lstm_units)
-    lstm_model.fit(
-        x_train_dl,
-        y_train_s,
-        validation_data=(x_val_dl, y_val_s) if len(x_val_dl) else None,
-        epochs=epochs,
-        batch_size=batch_size,
-        verbose=0,
-    )
+    if selected_models is None:
+        active = {"lstm", "gru", "rf"}
+    else:
+        active = {m.lower() for m in selected_models}
+    if not active:
+        raise ValueError("selected_models is empty. Choose at least one model.")
 
-    gru_model = _build_gru(input_steps=x_train.shape[1], output_steps=output_steps, units=gru_units)
-    gru_model.fit(
-        x_train_dl,
-        y_train_s,
-        validation_data=(x_val_dl, y_val_s) if len(x_val_dl) else None,
-        epochs=epochs,
-        batch_size=batch_size,
-        verbose=0,
-    )
+    lstm_model = None
+    if "lstm" in active:
+        lstm_model = _build_lstm(input_steps=x_train.shape[1], output_steps=output_steps, units=lstm_units)
+        lstm_model.fit(
+            x_train_dl,
+            y_train_s,
+            validation_data=(x_val_dl, y_val_s) if len(x_val_dl) else None,
+            epochs=epochs,
+            batch_size=batch_size,
+            verbose=0,
+        )
 
-    rf_model = RandomForestRegressor(n_estimators=rf_estimators, random_state=random_seed)
-    rf_model.fit(x_train_s, y_train_s.ravel() if output_steps == 1 else y_train_s)
+    gru_model = None
+    if "gru" in active:
+        gru_model = _build_gru(input_steps=x_train.shape[1], output_steps=output_steps, units=gru_units)
+        gru_model.fit(
+            x_train_dl,
+            y_train_s,
+            validation_data=(x_val_dl, y_val_s) if len(x_val_dl) else None,
+            epochs=epochs,
+            batch_size=batch_size,
+            verbose=0,
+        )
+
+    rf_model = None
+    if "rf" in active:
+        rf_model = RandomForestRegressor(n_estimators=rf_estimators, random_state=random_seed)
+        rf_model.fit(x_train_s, y_train_s.ravel() if output_steps == 1 else y_train_s)
 
     return SiteModels(
         lstm_model=lstm_model,
@@ -132,10 +146,16 @@ def predict_scaled(models: SiteModels, x: np.ndarray, model_name: str) -> np.nda
     x_s = models.x_scaler.transform(x)
     key = model_name.lower()
     if key == "lstm":
+        if models.lstm_model is None:
+            raise ValueError("LSTM model is not trained in this context.")
         pred_s = models.lstm_model.predict(x_s.reshape((x_s.shape[0], x_s.shape[1], 1)), verbose=0)
     elif key == "gru":
+        if models.gru_model is None:
+            raise ValueError("GRU model is not trained in this context.")
         pred_s = models.gru_model.predict(x_s.reshape((x_s.shape[0], x_s.shape[1], 1)), verbose=0)
     elif key in {"rf", "random_forest", "randomforest"}:
+        if models.rf_model is None:
+            raise ValueError("RF model is not trained in this context.")
         pred_s = models.rf_model.predict(x_s)
         if pred_s.ndim == 1:
             pred_s = pred_s.reshape(-1, 1)

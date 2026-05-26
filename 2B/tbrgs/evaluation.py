@@ -28,6 +28,7 @@ def evaluate_site(
     epochs: int,
     batch_size: int,
     random_seed: int,
+    selected_models: list[str] | None = None,
 ) -> SiteEvaluation:
     series = hourly_site_df.sort_values("timestamp")["flow"].to_numpy(dtype=float)
     x, y = build_supervised_sequences(series=series, lookback=lookback, horizon=horizon)
@@ -44,10 +45,12 @@ def evaluate_site(
         epochs=epochs,
         batch_size=batch_size,
         random_seed=random_seed,
+        selected_models=selected_models,
     )
 
+    active_models = ["lstm", "gru", "rf"] if selected_models is None else [m.lower() for m in selected_models]
     rows: list[dict[str, float | str | int]] = []
-    for name in ["lstm", "gru", "rf"]:
+    for name in active_models:
         started = time.perf_counter()
         y_pred = predict_unscaled(models=models, x=splits.x_test, model_name=name)
         infer_sec = time.perf_counter() - started
@@ -75,6 +78,9 @@ def evaluate_all_sites(hourly_df: pd.DataFrame, config: dict) -> tuple[dict[int,
     site_results: dict[int, SiteEvaluation] = {}
     all_rows: list[pd.DataFrame] = []
 
+    selected_models_cfg = config.get("runtime", {}).get("train_models")
+    selected_models = selected_models_cfg if isinstance(selected_models_cfg, list) else None
+
     for site_id, site_df in hourly_df.groupby("site_id"):
         site_df = site_df.sort_values("timestamp")
         if len(site_df) < data_cfg["lookback_steps"] + data_cfg["horizon_steps"] + 5:
@@ -92,6 +98,7 @@ def evaluate_all_sites(hourly_df: pd.DataFrame, config: dict) -> tuple[dict[int,
             epochs=int(model_cfg["epochs"]),
             batch_size=int(model_cfg["batch_size"]),
             random_seed=int(model_cfg["random_seed"]),
+            selected_models=selected_models,
         )
         site_results[int(site_id)] = result
         row = result.metrics_df.copy()
