@@ -166,12 +166,11 @@ This repository now includes an Assignment 2B implementation scaffold under the 
 
 For this workspace, use Python 3.10-3.12 so TensorFlow can run LSTM/GRU training.
 
-Open PowerShell in the unzipped `13_Intro_AI` folder, then run:
+Brand-new setup (no existing `.venv` required):
 
 ```bash
+Set-Location "C:\path\to\13_Intro_AI"
 py -3.10 -m venv .venv310
-.\.venv310\Scripts\python.exe -m pip install --upgrade pip
-.\.venv310\Scripts\python.exe -m pip install -r 2B/requirements_a2b.txt
 ```
 
 If script execution is blocked when activating venv:
@@ -180,7 +179,22 @@ If script execution is blocked when activating venv:
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 ```
 
-You can run everything without activating, by calling `.venv310` Python directly.
+Option A (activate then use `python`):
+
+```bash
+.\.venv310\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r 2B/requirements_a2b.txt
+```
+
+Option B (do not activate, call venv Python directly):
+
+```bash
+.\.venv310\Scripts\python.exe -m pip install --upgrade pip
+.\.venv310\Scripts\python.exe -m pip install -r 2B/requirements_a2b.txt
+```
+
+Note: every command below can be run either with `python` (if venv is activated) or with the full venv Python path.
 
 ### Optional: Windows GPU Setup (DirectML)
 
@@ -223,8 +237,15 @@ python 2B\run_tbrgs_gui.py
 Notes:
 - `DML_VISIBLE_DEVICES="0"` prefers the first adapter (commonly NVIDIA) and can reduce overhead from multi-adapter initialization.
 - TensorFlow DirectML logs such as `Could not identify NUMA node` are informational on Windows.
+- If you do not activate `.venv-tf-gpu`, run commands with `.\.venv-tf-gpu\Scripts\python.exe` instead of `python`.
 
 ### Run A2B from CLI
+
+```bash
+python 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best> --algorithm <DFS|BFS|GBFS|AS|CUS1|CUS2> --hour <0-23> --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
+```
+
+If not activated, use:
 
 ```bash
 .\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best> --algorithm <DFS|BFS|GBFS|AS|CUS1|CUS2> --hour <0-23> --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
@@ -233,7 +254,7 @@ Notes:
 Example:
 
 ```bash
-.\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best --algorithm CUS2 --hour 9 --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
+python 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best --algorithm CUS2 --hour 9 --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
 ```
 
 Notes:
@@ -241,6 +262,12 @@ Notes:
 - `--model best` uses the best-performing model per site from evaluation metrics.
 
 ### Run A2B GUI
+
+```bash
+python 2B/run_tbrgs_gui.py
+```
+
+If not activated:
 
 ```bash
 .\.venv310\Scripts\python.exe 2B/run_tbrgs_gui.py
@@ -253,6 +280,12 @@ GUI workflow:
 - Click Find Path to display the top-k routes and total time.
 
 ### Run A2B tests
+
+```bash
+python -m pytest 2B/tests_a2b -q
+```
+
+If not activated:
 
 ```bash
 .\.venv310\Scripts\python.exe -m pytest 2B/tests_a2b -q
