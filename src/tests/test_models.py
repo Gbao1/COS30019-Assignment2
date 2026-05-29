@@ -215,7 +215,7 @@ class TestGRUModel(TestModelBase):
         except ImportError:
             pytest.skip("TensorFlow not available")
 
-class TestModelComparison:
+class TestModelComparison(TestModelBase):
     """Integration tests for model comparison."""
 
     @pytest.fixture
