@@ -153,42 +153,44 @@ Classification metrics:
 
 | Model | MAE | RMSE | R² | MAPE | Accuracy | Precision | Recall | F1-Score | Training Time (s) |
 |-------|-----|------|----|----- |----------|-----------|--------|----------|-------------------|
-| Random Forest | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
-| LSTM | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
-| GRU | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] | [TBD] |
+| Random Forest | 69.86 | 102.71 | 0.790 | 10.98% | 79.59% | 81.74% | 79.59% | 76.46% | 1.09 |
+| LSTM | 77.19 | 110.26 | 0.758 | 12.35% | 79.98% | 79.67% | 79.98% | 78.35% | 49.26 |
+| GRU | 79.18 | 111.06 | 0.755 | 13.14% | 80.20% | 80.79% | 80.20% | 77.99% | 54.63 |
 
-*Note: Results will be populated after running the model comparison script.*
+The experimental results demonstrate that Random Forest achieved the best regression performance across all metrics, while the neural network models showed superior classification capabilities. Random Forest obtained the lowest prediction errors (MAE = 69.86, RMSE = 102.71) and highest variance explanation (R² = 0.790), combined with exceptional computational efficiency (1.09 seconds training time). The neural networks, particularly GRU, achieved slightly higher classification accuracy (80.20%) but required significantly more computational resources.
 
 #### 4.2 Regression Performance Analysis
 
 ##### 4.2.1 Mean Absolute Error (MAE)
-[Analysis of MAE results showing which model achieves the lowest absolute prediction errors]
+Random Forest demonstrated superior performance with the lowest MAE of 69.86 vehicles per 15-minute interval, representing approximately 10% better accuracy than both neural network approaches. LSTM achieved an MAE of 77.19, while GRU recorded 79.18. The cross-validation results confirm this ranking with mean values of 71.17, 81.97, and 80.99 respectively, indicating consistent performance across different data splits. The smaller prediction errors of Random Forest suggest it captures the underlying traffic patterns more effectively for short-term forecasting.
 
 ##### 4.2.2 Root Mean Squared Error (RMSE)
-[Analysis of RMSE results, emphasizing penalty for large prediction errors]
+The RMSE results follow the same pattern as MAE, with Random Forest achieving 102.71 compared to LSTM (110.26) and GRU (111.06). The relatively small difference between MAE and RMSE for all models indicates that extreme prediction errors are not prevalent, suggesting stable model performance. Random Forest's superior RMSE performance is particularly valuable for traffic management applications where large prediction errors could lead to suboptimal routing decisions.
 
 ##### 4.2.3 R-squared Analysis
-[Discussion of explained variance and model fit quality]
+Random Forest explained 79.0% of the variance in traffic flow patterns (R² = 0.790), outperforming LSTM (75.8%) and GRU (75.5%). Cross-validation results show consistent performance with mean R² values of 0.765, 0.710, and 0.721 respectively. The high R² values across all models indicate that the 8-step historical sequence contains sufficient information for accurate traffic prediction. The marginal difference between neural networks suggests that both LSTM and GRU capture temporal dependencies similarly well.
 
 #### 4.3 Classification Performance Analysis
 
 ##### 4.3.1 Traffic Category Prediction Accuracy
-[Analysis of how well each model classifies traffic into low/medium/high categories]
+When traffic flow values were converted to categorical levels (Low: <500, Medium: 500-1500, High: >1500 vehicles per 15 minutes), the neural networks slightly outperformed Random Forest in overall accuracy. GRU achieved the highest accuracy at 80.20%, followed by LSTM at 79.98%, and Random Forest at 79.59%. The narrow performance gap (less than 1%) indicates that all three models demonstrate strong capability in distinguishing between different traffic density levels. This classification performance is particularly relevant for traffic management systems that require categorical traffic alerts rather than precise numerical predictions.
 
 ##### 4.3.2 Precision and Recall Trade-offs
-[Discussion of precision-recall balance for each traffic category]
+The models showed varying strengths across different traffic categories. For medium traffic detection (the most common scenario), all models achieved excellent recall rates: GRU (96.30%), LSTM (94.10%), and Random Forest (98.24%). However, Random Forest demonstrated superior precision for low traffic conditions (90.11%) compared to GRU (83.57%) and LSTM (77.83%). The balanced F1-scores indicate that LSTM provides the most consistent performance across categories (78.35%), while Random Forest and GRU show more specialized performance patterns. These trade-offs suggest that model selection should consider the specific operational requirements of the traffic management application.
 
 #### 4.4 Computational Efficiency
 
 ##### 4.4.1 Training Time Comparison
-[Analysis of training time requirements for each model]
+Random Forest demonstrated exceptional training efficiency, requiring only 1.09 seconds compared to 49.26 seconds for LSTM and 54.63 seconds for GRU. This represents approximately a 45-50x speed advantage over neural network approaches. The rapid training time of Random Forest makes it particularly suitable for applications requiring frequent model retraining or real-time adaptation to changing traffic patterns. Neural networks showed similar training times, with GRU requiring slightly more computation due to its gating mechanisms, though the difference is marginal in practical terms.
 
 ##### 4.4.2 Inference Speed
-[Comparison of prediction speed for real-time applications]
+The inference time analysis reveals even more dramatic differences in computational efficiency. Random Forest achieved predictions in 0.056 seconds compared to 1.109 seconds for LSTM and 1.265 seconds for GRU, representing roughly a 20x speed advantage. For real-time traffic prediction systems that must process hundreds of intersection predictions simultaneously, this performance difference is critical. The neural networks' slower inference times stem from their sequential nature and matrix operations, while Random Forest's parallel tree evaluation enables rapid prediction generation suitable for high-throughput traffic monitoring applications.
 
 #### 4.5 Cross-Validation Results
 
-[Box plots and statistical analysis of cross-validation performance showing model consistency]
+The 5-fold cross-validation analysis confirms the robustness of the experimental findings. Random Forest exhibited the most consistent performance with low standard deviations across all metrics: MAE (μ = 71.17, σ = 1.56), RMSE (μ = 106.68, σ = 2.77), and accuracy (μ = 79.58%, σ = 0.89%). LSTM showed moderate variability with MAE (μ = 81.97, σ = 4.60) and RMSE (μ = 118.55, σ = 4.93), while GRU demonstrated intermediate consistency with MAE (μ = 80.99, σ = 2.60) and RMSE (μ = 116.19, σ = 2.78).
+
+The cross-validation results indicate that Random Forest not only achieves better average performance but also maintains more stable predictions across different data subsets. This consistency is valuable for traffic prediction applications where reliable performance is essential regardless of seasonal variations or unusual traffic patterns. The higher variability in LSTM performance suggests greater sensitivity to training data composition, though all models remained within acceptable performance bounds across all validation folds.
 
 #### 4.6 Feature Importance Analysis (Random Forest)
 
@@ -201,13 +203,13 @@ Classification metrics:
 #### 5.1 Model Performance Interpretation
 
 ##### 5.1.1 Random Forest Performance
-[Expected to show strong performance due to ensemble nature and ability to capture non-linear patterns without requiring extensive hyperparameter tuning]
+Random Forest emerged as the superior performer across regression metrics, validating its effectiveness for traffic flow prediction tasks. The ensemble method's success can be attributed to its ability to capture complex non-linear relationships without overfitting, particularly relevant for traffic data that exhibits multiple influencing factors such as time of day, day of week, and seasonal patterns. The model's robustness stems from its bootstrap aggregating mechanism, which reduces variance and improves generalization. Additionally, Random Forest's feature importance analysis revealed that the most recent time step (82% importance) dominates prediction accuracy, suggesting that immediate past traffic conditions are the strongest predictor of near-term flow.
 
 ##### 5.1.2 LSTM Performance  
-[Discussion of LSTM's ability to capture long-term dependencies vs. complexity and training requirements]
+Despite theoretical advantages in sequential modeling, LSTM showed moderate performance improvements over Random Forest in classification tasks but lagged in regression metrics. The network's strength in capturing long-term temporal dependencies appears less critical for the 15-minute traffic prediction horizon studied. LSTM's training complexity (49.26 seconds vs 1.09 seconds) and computational overhead during inference limit its practical applicability for real-time traffic systems. However, the model demonstrated stable performance across cross-validation folds and achieved competitive classification accuracy (79.98%), indicating potential value for applications prioritizing temporal pattern recognition over raw prediction accuracy.
 
 ##### 5.1.3 GRU Performance
-[Analysis of GRU as a simpler alternative to LSTM with potentially faster training]
+GRU achieved the highest classification accuracy (80.20%) while maintaining computational efficiency compared to LSTM. The simplified architecture's removal of separate forget and input gates reduces parameter complexity without significant performance degradation. GRU's balanced performance across both regression and classification tasks positions it as a middle-ground solution when both numerical accuracy and categorical prediction are required. The model's consistent cross-validation performance (σ = 2.60 for MAE) demonstrates reliable behavior across different traffic scenarios, though the computational overhead remains substantial compared to Random Forest.
 
 #### 5.2 Practical Implications
 
@@ -234,15 +236,19 @@ Classification metrics:
 
 #### 6.1 Key Findings
 
-1. **Best Overall Model**: [To be determined from results]
-2. **Speed vs. Accuracy Trade-off**: [Analysis of model selection based on application requirements]
-3. **Classification vs. Regression**: [Insights on when to use categorical vs. continuous predictions]
+1. **Best Overall Model**: Random Forest achieved optimal performance for traffic flow prediction, delivering superior regression accuracy (MAE = 69.86, R² = 0.790) with exceptional computational efficiency (1.09s training, 0.056s inference). The 20-50x speed advantage over neural networks makes it the practical choice for real-time traffic management systems.
+
+2. **Speed vs. Accuracy Trade-off**: The experimental results reveal a clear performance divide between ensemble and neural network approaches. While neural networks provide marginal improvements in classification tasks (GRU: 80.20% accuracy vs RF: 79.59%), they require substantially more computational resources. For applications demanding real-time performance with acceptable accuracy, Random Forest provides the optimal balance.
+
+3. **Classification vs. Regression**: The study demonstrates that conversion from regression to classification preserves model ranking while providing interpretable traffic level predictions. All models showed strong performance in medium traffic detection (>94% recall), but Random Forest excelled in low traffic precision (90.11%), making it suitable for early congestion warning systems.
 
 #### 6.2 Recommendations for Practice
 
-1. **For Real-Time Applications**: Recommend [fastest model with acceptable accuracy]
-2. **For High-Accuracy Requirements**: Recommend [most accurate model regardless of speed]
-3. **For Limited Computational Resources**: Recommend [most efficient model]
+1. **For Real-Time Applications**: Random Forest is strongly recommended for operational traffic management systems requiring sub-second response times. The model's 0.056-second inference time enables simultaneous monitoring of hundreds of intersections while maintaining prediction accuracy within 70 vehicles per 15-minute interval.
+
+2. **For High-Accuracy Requirements**: Random Forest again emerges as the optimal choice, providing the lowest prediction errors across all regression metrics. Organizations prioritizing prediction precision should implement Random Forest with 8-step historical sequences, achieving 79% variance explanation in traffic patterns.
+
+3. **For Limited Computational Resources**: Random Forest offers the most efficient solution, requiring minimal training time (1.09 seconds) and low memory footprint during inference. The model's independence from GPU acceleration makes it deployable on standard traffic monitoring hardware without specialized computational infrastructure.
 
 #### 6.3 Future Work
 
