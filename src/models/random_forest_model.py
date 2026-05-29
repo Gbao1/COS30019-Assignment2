@@ -60,7 +60,7 @@ class RandomForestTrafficModel(BaseTrafficModel):
             max_depth=self.max_depth,
             min_samples_split=self.min_samples_split,
             min_samples_leaf=self.min_samples_leaf,
-            random_state=42,
+            random_state=self.model_params.get('random_state', 42),
             n_jobs=-1  # Use all available cores
         )
 
@@ -72,6 +72,10 @@ class RandomForestTrafficModel(BaseTrafficModel):
 
         Random Forest expects 2D input, so we need to flatten the sequence dimension.
         """
+        # Input validation
+        if not np.all(np.isfinite(X)):
+            raise ValueError("Input X contains NaN or infinite values")
+
         # Flatten the sequence dimension: (samples, sequence_length, features) -> (samples, sequence_length * features)
         if len(X.shape) == 3:
             X_flattened = X.reshape(X.shape[0], -1)
@@ -84,6 +88,9 @@ class RandomForestTrafficModel(BaseTrafficModel):
             X_scaled = self.scaler.transform(X_flattened)
 
         if y is not None:
+            # Input validation for targets
+            if not np.all(np.isfinite(y)):
+                raise ValueError("Input y contains NaN or infinite values")
             # Random Forest can handle the original target values
             return X_scaled, y.ravel() if len(y.shape) > 1 else y
 
@@ -185,6 +192,10 @@ class RandomForestTrafficModel(BaseTrafficModel):
         """
         if not self.is_trained:
             raise ValueError("Model must be trained before making predictions")
+
+        # Input validation
+        if not np.all(np.isfinite(X)):
+            raise ValueError("Input contains NaN or infinite values")
 
         # Preprocess input
         X_scaled, _ = self._preprocess_data(X)

@@ -39,6 +39,7 @@ class LSTMTrafficModel(BaseTrafficModel):
         self.units = units
         self.dropout = dropout
         self.scaler = MinMaxScaler()
+        self.target_scaler = MinMaxScaler()  # Proper target scaler
         self.history = None
 
     def build_model(self, input_shape: Tuple[int, ...], **kwargs) -> tf.keras.Model:
@@ -69,7 +70,21 @@ class LSTMTrafficModel(BaseTrafficModel):
         return model
 
     def _preprocess_data(self, X: np.ndarray, y: np.ndarray = None, fit_scaler: bool = False) -> Tuple[np.ndarray, Optional[np.ndarray]]:
-        """Preprocess data with scaling."""
+        """
+        Preprocess data with proper scaling.
+
+        Args:
+            X: Input features
+            y: Target values (optional)
+            fit_scaler: Whether to fit the scalers on this data
+
+        Returns:
+            Tuple of scaled X and y arrays
+        """
+        # Input validation
+        if not np.all(np.isfinite(X)):
+            raise ValueError("Input X contains NaN or infinite values")
+
         # Reshape for scaling if necessary
         original_shape = X.shape
         X_reshaped = X.reshape(-1, X.shape[-1])
@@ -82,8 +97,18 @@ class LSTMTrafficModel(BaseTrafficModel):
         X_scaled = X_scaled.reshape(original_shape)
 
         if y is not None:
-            # For target values, we'll use a simple normalization
-            y_scaled = y / np.max(y) if np.max(y) > 0 else y
+            # Input validation for targets
+            if not np.all(np.isfinite(y)):
+                raise ValueError("Input y contains NaN or infinite values")
+
+            # Use proper MinMaxScaler for targets
+            y_reshaped = y.reshape(-1, 1)
+            if fit_scaler:
+                y_scaled = self.target_scaler.fit_transform(y_reshaped)
+            else:
+                y_scaled = self.target_scaler.transform(y_reshaped)
+
+            y_scaled = y_scaled.reshape(y.shape)
             return X_scaled, y_scaled
 
         return X_scaled, None
@@ -161,15 +186,18 @@ class LSTMTrafficModel(BaseTrafficModel):
         if not self.is_trained:
             raise ValueError("Model must be trained before making predictions")
 
+        # Input validation
+        if not np.all(np.isfinite(X)):
+            raise ValueError("Input contains NaN or infinite values")
+
         # Preprocess input
         X_scaled, _ = self._preprocess_data(X)
 
         # Make predictions
         predictions_scaled = self.model.predict(X_scaled, verbose=0)
 
-        # Denormalize predictions (simple approach)
-        # Note: In a real scenario, you'd want to store the target scaling parameters
-        predictions = predictions_scaled * np.max(X)  # Approximate denormalization
+        # Properly denormalize predictions using the fitted target scaler
+        predictions = self.target_scaler.inverse_transform(predictions_scaled)
 
         return predictions
 
@@ -203,6 +231,7 @@ class LSTMTrafficModel(BaseTrafficModel):
             'training_time': self.training_time,
             'is_trained': self.is_trained,
             'scaler': self.scaler,
+            'target_scaler': self.target_scaler,
             'history': self.history
         }
 
@@ -227,6 +256,7 @@ class LSTMTrafficModel(BaseTrafficModel):
         self.training_time = model_data.get('training_time', 0)
         self.is_trained = model_data.get('is_trained', True)
         self.scaler = model_data.get('scaler', MinMaxScaler())
+        self.target_scaler = model_data.get('target_scaler', MinMaxScaler())
         self.history = model_data.get('history', None)
 
         print(f"LSTM model loaded from {model_path} and {filepath}")

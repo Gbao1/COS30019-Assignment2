@@ -296,6 +296,186 @@ class TestModelComparison:
             assert 'is_trained' in info
             assert info['name'] == model.model_name
 
+class TestInputValidation(TestModelBase):
+    """Test input validation and edge cases."""
+
+    @pytest.fixture
+    def sample_data_with_nans(self):
+        """Create sample data with NaN values."""
+        np.random.seed(42)
+        X = np.random.randn(50, 8, 1) * 100 + 500
+        y = np.random.randn(50, 1) * 100 + 600
+
+        # Add some NaN values
+        X[0, 0, 0] = np.nan
+        y[5, 0] = np.inf
+
+        return X, y
+
+    @pytest.fixture
+    def sample_data_with_infs(self):
+        """Create sample data with infinity values."""
+        np.random.seed(42)
+        X = np.random.randn(50, 8, 1) * 100 + 500
+        y = np.random.randn(50, 1) * 100 + 600
+
+        # Add some infinity values
+        X[10, 5, 0] = np.inf
+        y[15, 0] = -np.inf
+
+        return X, y
+
+    def test_nan_validation_random_forest(self, sample_data_with_nans):
+        """Test that Random Forest rejects NaN inputs."""
+        model = RandomForestTrafficModel(n_estimators=10)
+        X, y = sample_data_with_nans
+
+        with pytest.raises(ValueError, match="NaN or infinite"):
+            model._preprocess_data(X, y, fit_scaler=True)
+
+    def test_inf_validation_random_forest(self, sample_data_with_infs):
+        """Test that Random Forest rejects infinite inputs."""
+        model = RandomForestTrafficModel(n_estimators=10)
+        X, y = sample_data_with_infs
+
+        with pytest.raises(ValueError, match="NaN or infinite"):
+            model._preprocess_data(X, y, fit_scaler=True)
+
+    def test_nan_validation_lstm(self, sample_data_with_nans):
+        """Test that LSTM rejects NaN inputs."""
+        try:
+            model = LSTMTrafficModel(units=32)
+            X, y = sample_data_with_nans
+
+            with pytest.raises(ValueError, match="NaN or infinite"):
+                model._preprocess_data(X, y, fit_scaler=True)
+        except ImportError:
+            pytest.skip("TensorFlow not available")
+
+    def test_prediction_validation_trained_model(self, train_test_split_data):
+        """Test that trained models validate prediction inputs."""
+        model = RandomForestTrafficModel(n_estimators=10)
+        data = train_test_split_data
+
+        # Train model first
+        model.train(data['X_train'], data['y_train'])
+
+        # Create data with NaN
+        X_with_nan = data['X_test'].copy()
+        X_with_nan[0, 0, 0] = np.nan
+
+        with pytest.raises(ValueError, match="NaN or infinite"):
+            model.predict(X_with_nan)
+
+class TestRandomStateHandling(TestModelBase):
+    """Test random state parameter handling."""
+
+    def test_random_forest_uses_random_state(self):
+        """Test that Random Forest uses the provided random_state."""
+        custom_random_state = 123
+        model = RandomForestTrafficModel(
+            n_estimators=10,
+            random_state=custom_random_state
+        )
+
+        # Build model to check parameters
+        built_model = model.build_model((8, 1))
+
+        assert built_model.random_state == custom_random_state
+
+    def test_random_forest_default_random_state(self):
+        """Test that Random Forest uses default random_state when not provided."""
+        model = RandomForestTrafficModel(n_estimators=10)
+        built_model = model.build_model((8, 1))
+
+        # Should use default (42) when not specified in model_params
+        assert built_model.random_state == 42
+
+class TestProperDenormalization(TestModelBase):
+    """Test that denormalization produces reasonable results."""
+
+    def test_lstm_denormalization_range(self, train_test_split_data):
+        """Test that LSTM predictions are in reasonable range after denormalization."""
+        try:
+            model = LSTMTrafficModel(units=32)
+            data = train_test_split_data
+
+            # Train model
+            model.train(data['X_train'], data['y_train'], epochs=2, batch_size=16)
+
+            # Make predictions
+            predictions = model.predict(data['X_test'])
+
+            # Check that predictions are in reasonable range
+            # Should be roughly in the same range as training data
+            y_train_min, y_train_max = data['y_train'].min(), data['y_train'].max()
+            pred_min, pred_max = predictions.min(), predictions.max()
+
+            # Predictions shouldn't be orders of magnitude off
+            # Allow for some variance but catch completely wrong scaling
+            assert pred_min > y_train_min * 0.1, f"Predictions too small: {pred_min} vs train min {y_train_min}"
+            assert pred_max < y_train_max * 10, f"Predictions too large: {pred_max} vs train max {y_train_max}"
+
+            # Predictions should be non-negative for traffic flow
+            assert np.all(predictions >= 0), "Traffic flow predictions should be non-negative"
+
+        except ImportError:
+            pytest.skip("TensorFlow not available")
+
+    def test_gru_denormalization_range(self, train_test_split_data):
+        """Test that GRU predictions are in reasonable range after denormalization."""
+        try:
+            model = GRUTrafficModel(units=32)
+            data = train_test_split_data
+
+            # Train model
+            model.train(data['X_train'], data['y_train'], epochs=2, batch_size=16)
+
+            # Make predictions
+            predictions = model.predict(data['X_test'])
+
+            # Check that predictions are in reasonable range
+            y_train_min, y_train_max = data['y_train'].min(), data['y_train'].max()
+            pred_min, pred_max = predictions.min(), predictions.max()
+
+            # Predictions shouldn't be orders of magnitude off
+            assert pred_min > y_train_min * 0.1, f"Predictions too small: {pred_min} vs train min {y_train_min}"
+            assert pred_max < y_train_max * 10, f"Predictions too large: {pred_max} vs train max {y_train_max}"
+
+            # Predictions should be non-negative for traffic flow
+            assert np.all(predictions >= 0), "Traffic flow predictions should be non-negative"
+
+        except ImportError:
+            pytest.skip("TensorFlow not available")
+
+    def test_target_scaler_consistency(self, train_test_split_data):
+        """Test that target scaling and denormalization are consistent."""
+        try:
+            model = LSTMTrafficModel(units=32)
+            data = train_test_split_data
+
+            # Get original target values
+            original_targets = data['y_train'][:5].copy()
+
+            # Process and unprocess data
+            _, y_scaled = model._preprocess_data(
+                data['X_train'][:5], original_targets, fit_scaler=True
+            )
+
+            # Manually inverse transform
+            y_unscaled = model.target_scaler.inverse_transform(
+                y_scaled.reshape(-1, 1)
+            ).reshape(original_targets.shape)
+
+            # Should get back original values (within numerical precision)
+            np.testing.assert_allclose(
+                original_targets, y_unscaled, rtol=1e-10,
+                err_msg="Target scaling/unscaling should be consistent"
+            )
+
+        except ImportError:
+            pytest.skip("TensorFlow not available")
+
 if __name__ == "__main__":
     # Run tests
     pytest.main([__file__, "-v"])

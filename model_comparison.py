@@ -20,7 +20,11 @@ warnings.filterwarnings('ignore')
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 # Import configuration
-from config import *
+from config import (
+    SEQUENCE_LENGTH, TEST_SIZE, VALIDATION_SIZE, RANDOM_STATE,
+    CROSS_VALIDATION_FOLDS, MODEL_PARAMS, TRAFFIC_THRESHOLDS,
+    TRAFFIC_DATA_PATH, SITE_DATA_PATH, LOCATION_DATA_PATH
+)
 
 # Import data loading
 from src.data.data_loader import TrafficDataLoader, convert_to_classification
