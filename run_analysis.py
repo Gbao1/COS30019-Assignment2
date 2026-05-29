@@ -10,7 +10,7 @@ from pathlib import Path
 def check_dependencies():
     """Check if required packages are installed."""
     required_packages = [
-        'numpy', 'pandas', 'scikit-learn',
+        'numpy', 'pandas', 'sklearn',
         'matplotlib', 'seaborn', 'pytest'
     ]
 
