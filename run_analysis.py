@@ -19,17 +19,17 @@ def check_dependencies():
     for package in required_packages:
         try:
             __import__(package)
-            print(f"✓ {package}")
+            print(f"[OK] {package}")
         except ImportError:
             missing_packages.append(package)
-            print(f"✗ {package}")
+            print(f"[MISSING] {package}")
 
     # Check for TensorFlow separately
     try:
         import tensorflow
-        print(f"✓ tensorflow (version: {tensorflow.__version__})")
+        print(f"[OK] tensorflow (version: {tensorflow.__version__})")
     except ImportError:
-        print("✗ tensorflow - Neural network models will be skipped")
+        print("[MISSING] tensorflow - Neural network models will be skipped")
         print("  To install TensorFlow: pip install tensorflow")
 
     if missing_packages:
@@ -62,10 +62,10 @@ def run_tests():
             print("STDERR:", result.stderr)
 
         if result.returncode == 0:
-            print("✓ All tests passed!")
+            print("[SUCCESS] All tests passed!")
             return True
         else:
-            print("✗ Some tests failed")
+            print("[ERROR] Some tests failed")
             return False
 
     except Exception as e:
@@ -89,10 +89,10 @@ def run_model_comparison():
             print("STDERR:", result.stderr)
 
         if result.returncode == 0:
-            print("✓ Model comparison completed successfully!")
+            print("[SUCCESS] Model comparison completed successfully!")
             return True
         else:
-            print("✗ Model comparison failed")
+            print("[ERROR] Model comparison failed")
             return False
 
     except Exception as e:
@@ -122,10 +122,10 @@ def generate_visualizations():
             print("STDERR:", result.stderr)
 
         if result.returncode == 0:
-            print("✓ Visualizations generated successfully!")
+            print("[SUCCESS] Visualizations generated successfully!")
             return True
         else:
-            print("✗ Visualization generation failed")
+            print("[ERROR] Visualization generation failed")
             return False
 
     except Exception as e:
