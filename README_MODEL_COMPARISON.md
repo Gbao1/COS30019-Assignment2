@@ -2,8 +2,6 @@
 
 This project implements and compares three machine learning models for traffic flow prediction: LSTM, GRU, and Random Forest. The comparison includes both regression and classification metrics as requested.
 
-## 🚀 Quick Start
-
 ### Option 1: Run Everything Automatically
 ```bash
 python run_analysis.py
@@ -38,7 +36,7 @@ python model_comparison.py
 python -c "from src.utils.visualization import main; main()"
 ```
 
-## 📊 What Gets Generated
+## What Gets Generated
 
 After running the analysis, you'll get:
 
@@ -56,7 +54,7 @@ After running the analysis, you'll get:
 ### Report
 - `REPORT.md` - 80-90% complete academic report ready for submission
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 📁 src/

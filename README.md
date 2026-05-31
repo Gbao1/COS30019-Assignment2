@@ -242,19 +242,19 @@ Notes:
 ### Run A2B from CLI
 
 ```bash
-python 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best> --algorithm <DFS|BFS|GBFS|AS|CUS1|CUS2> --hour <0-23> --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
+python 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best> --algorithm <DFS|BFS|GBFS|AS|CUS1|CUS2> --hour <0-23>
 ```
 
 If not activated, use:
 
 ```bash
-.\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best> --algorithm <DFS|BFS|GBFS|AS|CUS1|CUS2> --hour <0-23> --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
+.\.venv310\Scripts\python.exe 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin <ORIGIN_SCATS_ID> --destination <DEST_SCATS_ID> --top-k <K> --model <lstm|gru|rf|best> --algorithm <DFS|BFS|GBFS|AS|CUS1|CUS2> --hour <0-23>
 ```
 
 Example:
 
 ```bash
-python 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best --algorithm CUS2 --hour 9 --metrics-out 2B/data/output/tbrgs_metrics_summary.csv
+python 2B/run_tbrgs_cli.py --config 2B/config/tbrgs_defaults.json --origin 2000 --destination 3002 --top-k 5 --model best --algorithm CUS2 --hour 9
 ```
 
 Notes:
