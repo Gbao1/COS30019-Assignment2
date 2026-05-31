@@ -45,15 +45,20 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Virtual environments
 .env
+.venv/
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+.venv310/
+.venv-tf-gpu/
 
 # IDEs
 .vscode/
@@ -70,9 +75,10 @@ venv.bak/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # TensorFlow/Keras
 *.h5
@@ -88,3 +94,12 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+
+# Local extracted assignment artifacts
+_assignment_extract/
+
+# Local docs/images (from bao's branch)
+*.md
+!README.md
+!**/README.md
+*.png

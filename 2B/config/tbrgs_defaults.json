@@ -1,0 +1,42 @@
+{
+  "data": {
+    "traffic_file": "../data/input/Scats Data October 2006.xls",
+    "site_file": "../data/input/SCATSSiteListingSpreadsheet_VicRoads.xls",
+    "location_fallback_file": "../data/input/Traffic_Count_Locations_with_LONG_LAT.csv",
+    "time_interval_minutes": 15,
+    "lookback_steps": 8,
+    "horizon_steps": 1,
+    "train_ratio": 0.7,
+    "val_ratio": 0.15
+  },
+  "traffic": {
+    "speed_limit_kmh": 60.0,
+    "intersection_delay_seconds": 30.0,
+    "use_flow_from": "start",
+    "assume_under_capacity": true
+  },
+  "network": {
+    "k_nearest_neighbors": 3,
+    "max_neighbor_distance_km": 2.5
+  },
+  "models": {
+    "epochs": 5,
+    "batch_size": 32,
+    "lstm_units": 64,
+    "gru_units": 64,
+    "random_forest_estimators": 300,
+    "random_seed": 42
+  },
+  "runtime": {
+    "default_origin": 2000,
+    "default_destination": 3002,
+    "default_top_k": 5,
+    "default_model": "lstm",
+    "default_algorithm": "CUS2",
+    "default_hour": 9,
+    "map": {
+      "image_path": "../IBM data_Bor.png",
+      "padding_px": [55, 55, 55, 55]
+    }
+  }
+}
